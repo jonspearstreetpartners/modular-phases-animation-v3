@@ -402,20 +402,42 @@
         align-items: center;
         justify-content: center;
       }
+      /* Inner wrapper around the image so we can position child overlays
+         (like the York, NE cover) RELATIVE to the image, not the viewport.
+         The wrapper auto-sizes to the image because it has display:inline-block
+         with no width set. */
+      #final-rendering-inner {
+        position: relative;
+        display: inline-block;
+        line-height: 0;
+        max-width: 78vw;
+        max-height: 78vh;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+      }
       #final-rendering {
-        /* Sized SMALLER than the viewport so the cross-fade isn't a jarring
-           size jump from the 3D close-in shot. Bias slightly larger than the
-           camera's framing so it reads as "the same home, just photoreal". */
         max-width: 78vw;
         max-height: 78vh;
         width: auto;
         height: auto;
         object-fit: contain;
         display: block;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);   /* gentle drop shadow makes it sit nicely on the gradient */
       }
       @media (max-width: 768px) {
+        #final-rendering-inner,
         #final-rendering { max-width: 92vw; max-height: 70vh; }
+      }
+      /* Sky-colored cover over the "York, NE" text in the rendering's upper
+         right. Sized in % of the rendering so it scales with the image at
+         any viewport size. Position tuned visually: the text sits roughly
+         at right 4-15%, top 5-11% of the rendering. */
+      #york-cover {
+        position: absolute;
+        top: 4%;
+        right: 2%;
+        width: 16%;
+        height: 8%;
+        background: #C9D7DD;            /* matches the pale upper sky in the rendering */
+        pointer-events: none;
       }
 
       /* Start-with-sound overlay (shown until user clicks; required by browsers
@@ -477,7 +499,11 @@
            aspect. Wrapper has a sky-colored background to fill any
            letterbox / pillarbox space. -->
       <div id="final-rendering-wrap">
-        <img id="final-rendering" src="/final-rendering.png" alt="" />
+        <div id="final-rendering-inner">
+          <img id="final-rendering" src="/final-rendering.png" alt="" />
+          <!-- Sky-colored cover over the "York, NE" text in the upper-right. -->
+          <div id="york-cover"></div>
+        </div>
       </div>
 
       <!-- Start-with-sound overlay. Shown on initial load (because browsers
