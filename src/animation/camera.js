@@ -118,7 +118,7 @@ export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0,
     distance:    35,
     elevation:   14,
     frustumSize: 35,
-  }, 75.0, 3.0, 'power2.inOut');
+  }, 75.0, 2.0, 'power2.inOut');         // 1 s faster than before
 
   // Toggle the directional key light's shadow casting at the head-on shot.
   // OFF at t=75 (start of head-on) so no hard shadow falls across the front

@@ -285,76 +285,9 @@ showStage();
   loader.src = imgs[0].src;
 })();
 
-// ---------- Strip Champion Homes / York NE branding from final rendering ----------
-// The source PNG has client branding in the upper-right portion of the
-// image. Per Spear Partners' delivery, the rendering should appear without
-// it. Approach: load the PNG into an off-screen canvas, paint over the
-// branding region with a solid sky-blue that matches the surrounding sky
-// (sampled from a known-clean column on the left of the image), export the
-// canvas back to a data URL, and assign it to the <img id="final-rendering">.
-//
-// All client-side; no native dependencies; identical behavior on Vercel.
-(function stripRenderingBranding() {
-  const img = document.querySelector('#final-rendering');
-  if (!img) return;
-
-  const loader = new Image();
-  loader.crossOrigin = 'anonymous';
-  loader.onload = () => {
-    try {
-      const W = loader.naturalWidth;
-      const H = loader.naturalHeight;
-      const canvas = document.createElement('canvas');
-      canvas.width = W;
-      canvas.height = H;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(loader, 0, 0);
-
-      // Sample a clean sky pixel. Avg over a small region near the very top
-      // of the image, slightly right-of-center, where the rendering shows
-      // pure sky between the home's roof peak and the right tree canopy.
-      // Single-pixel sampling at the upper-left was hitting tree leaves and
-      // producing a green fill. Averaging 5 sample points scattered along
-      // the top edge inside the trunk-of-sky band gives a robust sky color.
-      const samples = [
-        ctx.getImageData(W * 0.50, H * 0.02, 1, 1).data,
-        ctx.getImageData(W * 0.55, H * 0.02, 1, 1).data,
-        ctx.getImageData(W * 0.45, H * 0.03, 1, 1).data,
-        ctx.getImageData(W * 0.50, H * 0.04, 1, 1).data,
-        ctx.getImageData(W * 0.42, H * 0.02, 1, 1).data,
-      ];
-      let r = 0, g = 0, b = 0;
-      for (const s of samples) { r += s[0]; g += s[1]; b += s[2]; }
-      r = Math.round(r / samples.length);
-      g = Math.round(g / samples.length);
-      b = Math.round(b / samples.length);
-      const sky = `rgb(${r}, ${g}, ${b})`;
-
-      // Paint over the branding region: roughly the right 65% of the top 14%
-      // of the image. Slight margin in from the edge so we don't paint a
-      // visible rectangle on the very right edge.
-      ctx.fillStyle = sky;
-      ctx.fillRect(W * 0.35, 0, W * 0.65, H * 0.14);
-
-      // Soften the bottom edge of the painted rectangle with a vertical
-      // gradient so there's no hard line where the fill meets the original
-      // image. The gradient goes from solid sky at the top to transparent
-      // at the bottom of a 6% feather band.
-      const featherTop = H * 0.14;
-      const featherH   = H * 0.06;
-      const grad = ctx.createLinearGradient(0, featherTop, 0, featherTop + featherH);
-      grad.addColorStop(0, sky);
-      grad.addColorStop(1, sky.replace('rgb(', 'rgba(').replace(')', ', 0)'));
-      ctx.fillStyle = grad;
-      ctx.fillRect(W * 0.35, featherTop, W * 0.65, featherH);
-
-      img.src = canvas.toDataURL('image/png');
-    } catch (e) {
-      console.warn('Final rendering branding strip failed:', e);
-    }
-  };
-  loader.src = img.src;
-})();
+// (Branding-strip pass removed per user request — the Champion Homes /
+//  York NE text in the source rendering will simply remain in the
+//  final fade-in. Acceptable for now; can revisit later.)
 
 // ---------- UI: PLAY / RESET, scrubbable progress bar, stage chips ----------
 const btnPlay      = document.getElementById('btn-play');
