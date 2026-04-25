@@ -106,58 +106,26 @@ export function buildCrane() {
     group.add(sw);
   }
 
-  // ---- Vertical mast (rises from chassis center) ----
-  const mastH = 28;
-  const mastTop = 1.5 + chassisH + mastH;
-  const mast = new THREE.Mesh(
-    new THREE.BoxGeometry(2, mastH, 2),
-    boomMat(),
-  );
-  mast.position.set(0, 1.5 + chassisH + mastH / 2, 0);
-  mast.castShadow = mast.receiveShadow = true;
-  mast.name = 'crane_mast';
-  group.add(mast);
+  // ---- (Mast + boom removed per user request) ----
+  // The crane is now a chassis-only platform. Modules rise via cables that
+  // appear to descend from above the camera frame. This sidesteps the
+  // boom-rotation timing issues entirely while keeping a believable
+  // "crane lift" feel — the cables read as suspending the load and the
+  // chassis reads as the operator/source.
 
-  // ---- Boom pivot (group at the mast top; boom hangs off +X end) ----
-  // The boom rotates around this pivot so its tip rises/falls following the
-  // hook's elevation. updateCraneCables() computes the angle each frame from
-  // the current hook position so the boom always points at the load.
-  const boomLen = 32;
-  const boomPivot = new THREE.Group();
-  boomPivot.name = 'crane_boom_pivot';
-  boomPivot.position.set(0, mastTop, 0);
-  group.add(boomPivot);
-
-  const boom = new THREE.Mesh(
-    new THREE.BoxGeometry(boomLen, 1.4, 1.4),
-    boomMat(),
-  );
-  // Place the boom so its left edge sits at the pivot (x=0 in pivot-local).
-  // Box geometry is centered on its origin, so push x by +boomLen/2.
-  boom.position.set(boomLen / 2, 0, 0);
-  boom.castShadow = boom.receiveShadow = true;
-  boom.name = 'crane_boom';
-  boomPivot.add(boom);
-
-  // Initial rest angle (~26° below horizontal from the mast top).
-  const initialBoomAngle = -Math.PI / 7;
-  boomPivot.rotation.z = initialBoomAngle;
-
-  // ---- Hook + 4 cables (descend from boom tip) ----
-  // Hook starts at rest dangling 12 ft below the boom tip.
-  const initialBoomTipX = boomLen * Math.cos(initialBoomAngle);
-  const initialBoomTipY = mastTop + boomLen * Math.sin(initialBoomAngle);
-
+  // ---- Hook + 4 cables (descend from above the camera frame) ----
+  // Conceptually: cables descend from a point 60 ft directly above each
+  // module's location. Stages.js animates the hook's world position; cables
+  // stretch from the hook UP to a fixed off-camera height, so they always
+  // read as "going up out of the frame."
+  const ANCHOR_Y = 80;          // off-camera anchor height (above orthographic frustum)
   const hook = new THREE.Group();
   hook.name = 'crane_hook';
-  // boomTipX/Y are RUNTIME values updated each frame by updateCraneCables.
-  // They're used by the cable-length tracker (and by stages.js to know where
-  // the hook should be in pivot-relative space).
-  hook.userData.boomTipX = initialBoomTipX;
-  hook.userData.boomTipY = initialBoomTipY;
-  hook.userData.mastTop  = mastTop;     // for boom-angle math each frame
-  hook.userData.boomLen  = boomLen;
-  hook.position.set(initialBoomTipX, initialBoomTipY - 12, 0);
+  hook.userData.boomTipX = 0;
+  hook.userData.boomTipY = ANCHOR_Y;     // cables stretch up to this Y
+  hook.userData.mastTop  = ANCHOR_Y;
+  hook.userData.boomLen  = 0;
+  hook.position.set(0, 30, 0);             // initial rest dangle at y=30
   group.add(hook);
 
   // Hook block (small dark box at the bottom of the hook group)
@@ -195,67 +163,21 @@ export function buildCrane() {
 
   group.userData.hook = hook;
   group.userData.cables = cables;
-  group.userData.boomPivot = boomPivot;
   return group;
 }
 
 /**
- * Update boom rotation + cable lengths each frame.
- *  - Boom rotates around the mast top so its tip points at the hook's X
- *    position. As the hook lowers to grab a module, the boom angles down;
- *    as the hook rises during the cruise, the boom angles back up. The
- *    overall effect is a boom that follows the load instead of clipping
- *    through it.
- *  - The 4 lift cables stretch vertically from the hook to the new boom-tip
- *    Y. We approximate cables as straight-up lines (good enough at the iso
- *    angle, since hookX stays close to boomTipX in the choreography).
- *
- * Called every frame from main.js's render loop while the crane is visible.
+ * Update cable lengths each frame so they always reach from the hook UP to
+ * a fixed off-camera anchor (hook.userData.boomTipY = ANCHOR_Y from build).
+ * The boom + mast were removed — cables now read as descending out of the
+ * top of the frame, so the load appears suspended without any visible
+ * geometry that could clip into modules.
  */
 export function updateCraneCables(crane) {
   if (!crane || !crane.userData.cables) return;
   const hook = crane.userData.hook;
-  const boomPivot = crane.userData.boomPivot;
   if (!hook) return;
 
-  // ---- Boom rotation ----
-  // Goal: boom + hook move as a tight rigid unit so the load NEVER appears
-  // to pass through the boom or its cables. We sacrifice realism (real
-  // crane hooks dangle 10-20 ft below the boom tip on long cables) for
-  // the much more important property of "geometry never penetrates other
-  // geometry."
-  //
-  // Strategy: the boom aims so its TIP sits directly over the hook with
-  // only a SHORT cable gap. As the hook moves, the boom tracks 1:1.
-  if (boomPivot) {
-    const mastTop = hook.userData.mastTop;
-    const boomLen = hook.userData.boomLen;
-    const hookX = hook.position.x;
-    const hookY = hook.position.y;
-
-    // Tight cable gap: boom tip sits just 2 ft above the hook so the
-    // cables visible between them are short and the whole hoist assembly
-    // travels with the load.
-    const targetCableLen = 2;
-    const aimX = Math.max(8, hookX);          // small minimum so boom never folds onto cab
-    const aimY = hookY + targetCableLen;
-    const dx = aimX;
-    const dy = aimY - mastTop;
-    let angle = Math.atan2(dy, Math.max(0.5, dx));
-    // Allow steep down-angles so boom can lower with the hook.
-    // Wide clamp (-82° to +60°) — boom can both dip steeply down AND
-    // angle steeply up to reach high hook positions during cruise.
-    angle = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 3, angle));
-    boomPivot.rotation.z = angle;
-
-    // Cache resolved boom-tip world position for cable length math.
-    const tipX = boomLen * Math.cos(angle);
-    const tipY = mastTop + boomLen * Math.sin(angle);
-    hook.userData.boomTipX = tipX;
-    hook.userData.boomTipY = tipY;
-  }
-
-  // ---- Cable length update ----
   const tipY = hook.userData.boomTipY;
   const hookY = hook.position.y;
   const len = Math.max(0.5, tipY - hookY);
