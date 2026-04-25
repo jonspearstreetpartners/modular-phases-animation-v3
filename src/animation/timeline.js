@@ -144,7 +144,7 @@ export function buildTimeline(refs, { paused = true } = {}) {
   tl.set('#final-rendering-wrap', { opacity: 0 }, 0);
   tl.to ('#final-rendering-wrap', {
     opacity: 1,
-    duration: 3.5,
+    duration: 2.75,                  // 0.75 s faster than before
     ease: 'power2.inOut',
   }, fadeInAt);
 
