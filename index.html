@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spear Partners — Modular Factory Assembly</title>
+    <style>
+      :root {
+        --spear-navy: #1A4A7A;
+        --spear-light: #4A90E2;
+        --bg: #FAFAF8;
+        --bg-bottom: #F0F0EC;
+        --text-gray: #6B6B68;
+        --approved-green: #3AA850;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        background: linear-gradient(to bottom, var(--bg) 0%, var(--bg-bottom) 100%);
+        color: #222;
+      }
+
+      #app {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      #scene-canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Stage indicator (top-left) */
+      #stage-indicator {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: #ffffff;
+        border: 0.5px solid var(--spear-navy);
+        padding: 12px 18px;
+        font-size: 18px;
+        letter-spacing: 0.3px;
+        color: #222;
+        opacity: 0;
+        pointer-events: none;
+        min-width: 240px;
+      }
+      #stage-indicator .stage-num {
+        color: var(--spear-navy);
+        font-weight: 600;
+      }
+
+      /* Brand tag (top-right) */
+      #brand-tag {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        opacity: 0;
+        pointer-events: none;
+      }
+      #brand-tag img {
+        display: block;
+        height: 84px;            /* 25% larger than previous (67px → 84px) */
+        width: auto;
+        /* Transparency is achieved by client-side pixel processing (see
+           main.js) — actual alpha=0 on near-white pixels, which works
+           reliably on every browser including mobile. mix-blend-mode is
+           NOT used here because it's unreliable over the WebGL canvas. */
+      }
+
+      /* Bottom controls + progress */
+      #controls {
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        opacity: 0;
+        pointer-events: none;
+      }
+      /* Wrapper expands the touch hit-area without making the visible track
+         taller. Cursor reads as "pointer" so users know it's clickable. */
+      #progress-wrap {
+        flex: 1;
+        position: relative;
+        height: 24px;             /* hit area for mouse + finger */
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        pointer-events: auto;     /* parent #controls is pointer-events: none until visible */
+        touch-action: none;       /* prevent native scroll fights during drag */
+      }
+      #progress-track {
+        position: relative;
+        width: 100%;
+        height: 3px;
+        background: rgba(26, 74, 122, 0.15);
+        overflow: visible;
+      }
+      #progress-fill {
+        position: absolute;
+        top: 0; left: 0; bottom: 0;
+        width: 0%;
+        background: var(--spear-navy);
+        pointer-events: none;
+      }
+      #progress-thumb {
+        position: absolute;
+        top: 50%;
+        left: 0%;
+        width: 12px; height: 12px;
+        margin-left: -6px;
+        margin-top: -6px;
+        background: var(--spear-navy);
+        border: 2px solid #fff;
+        border-radius: 50%;
+        pointer-events: none;     /* drag is handled on the wrapper */
+        transition: transform 0.12s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      }
+      #progress-wrap:hover #progress-thumb,
+      #progress-wrap.scrubbing #progress-thumb {
+        transform: scale(1.35);
+      }
+
+      /* Stage-jump chips — small clickable labels above the progress bar */
+      #stage-chips {
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        bottom: 56px;            /* sits just above #controls */
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .stage-chip {
+        background: rgba(255,255,255,0.85);
+        border: 1px solid rgba(26, 74, 122, 0.35);
+        color: var(--spear-navy);
+        font-size: 10px;
+        letter-spacing: 0.5px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-family: inherit;
+        font-weight: 600;
+        pointer-events: auto;
+        white-space: nowrap;
+        transition: background-color 0.15s ease, color 0.15s ease;
+      }
+      .stage-chip:hover { background: var(--spear-navy); color: #fff; }
+      .stage-chip.active { background: var(--spear-navy); color: #fff; }
+
+      /* ---------- Export modal + recording overlay ---------- */
+      #export-modal {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        background: #ffffff;
+        border: 1px solid var(--spear-navy);
+        padding: 20px 24px;
+        z-index: 50;
+        min-width: 280px;
+        display: none;       /* shown via .open */
+        font-family: inherit;
+      }
+      #export-modal.open { display: block; }
+      #export-modal h3 {
+        margin: 0 0 10px;
+        color: var(--spear-navy);
+        font-size: 14px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+      #export-modal p {
+        margin: 0 0 16px;
+        font-size: 12px;
+        color: var(--text-gray);
+        line-height: 1.4;
+      }
+      #export-modal .res-options {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 16px;
+      }
+      #export-modal .res-options label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-size: 12px;
+        padding: 6px 8px;
+        border: 1px solid #e0e0dc;
+        transition: border-color 0.15s ease, background-color 0.15s ease;
+      }
+      #export-modal .res-options label:hover { border-color: var(--spear-navy); }
+      #export-modal .res-options label:has(input:checked) {
+        border-color: var(--spear-navy);
+        background: rgba(26, 74, 122, 0.06);
+      }
+      #export-modal .res-options input[type="radio"] {
+        accent-color: var(--spear-navy);
+      }
+      #export-modal .res-meta {
+        font-size: 10px;
+        color: var(--text-gray);
+        margin-left: auto;
+      }
+      #export-modal .modal-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      /* Recording overlay (shown while MediaRecorder is capturing) */
+      #recording-overlay {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        padding: 10px 16px;
+        background: rgba(220, 60, 60, 0.92);
+        color: #fff;
+        font-size: 12px;
+        letter-spacing: 1.5px;
+        font-weight: 600;
+        display: none;        /* shown via .recording on body */
+        align-items: center;
+        gap: 12px;
+        z-index: 60;
+      }
+      #recording-overlay::before {
+        content: '';
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        background: #fff;
+        animation: rec-pulse 1s infinite ease-in-out;
+      }
+      @keyframes rec-pulse {
+        0%, 100% { opacity: 1; }
+        50%      { opacity: 0.3; }
+      }
+      #recording-overlay .rec-progress {
+        flex: 1;
+        height: 4px;
+        background: rgba(255,255,255,0.25);
+        position: relative;
+      }
+      #recording-overlay .rec-progress-fill {
+        position: absolute;
+        top: 0; left: 0; bottom: 0;
+        width: 0%;
+        background: #fff;
+      }
+
+      /* While actively recording: hide chips + bottom controls + scrubbing UI
+         so the captured video is clean. Stage indicator + brand tag stay
+         visible (these are valuable in an explainer-style export). */
+      body.recording #stage-chips,
+      body.recording #controls {
+        display: none !important;
+      }
+      body.recording #recording-overlay {
+        display: flex;
+      }
+      #time-display {
+        font-size: 11px;
+        color: var(--text-gray);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.5px;
+        min-width: 70px;
+        text-align: right;
+      }
+      .ctrl-btn {
+        background: transparent;
+        border: 1px solid var(--spear-navy);
+        color: var(--spear-navy);
+        padding: 4px 10px;
+        font-size: 11px;
+        letter-spacing: 1px;
+        cursor: pointer;
+        font-family: inherit;
+        pointer-events: auto;
+      }
+      .ctrl-btn:hover { background: var(--spear-navy); color: #fff; }
+
+      /* COMPLETE stamp removed per user request — no end-of-animation overlay */
+
+      /* ---------- Mobile (≤ 768 px) ---------- */
+      @media (max-width: 768px) {
+        #stage-indicator {
+          top: 12px;
+          left: 12px;
+          padding: 8px 12px;
+          font-size: 14px;
+          min-width: 0;
+          max-width: calc(50vw - 24px);
+        }
+        #brand-tag {
+          top: 12px;
+          right: 12px;
+        }
+        #brand-tag img {
+          height: 50px;          /* logo scales down on small screens */
+        }
+        #controls {
+          left: 12px;
+          right: 12px;
+          /* Stay clear of iOS Safari bottom URL bar / Android gesture bar.
+             max() picks whichever is greater: a fixed 56px fallback, or the
+             native safe-area inset + 20px for notched/home-indicator devices. */
+          bottom: max(56px, calc(env(safe-area-inset-bottom) + 20px));
+          gap: 8px;
+        }
+        .ctrl-btn {
+          padding: 8px 10px;     /* bigger touch target */
+          font-size: 10px;
+          letter-spacing: 0.5px;
+        }
+        #time-display {
+          font-size: 10px;
+          min-width: 60px;
+        }
+        #stage-chips {
+          left: 8px;
+          right: 8px;
+          /* Sit above the raised buttons (which use safe-area math) */
+          bottom: max(96px, calc(env(safe-area-inset-bottom) + 60px));
+          gap: 3px;
+        }
+        .stage-chip {
+          font-size: 9px;
+          padding: 3px 6px;
+          letter-spacing: 0.3px;
+        }
+      }
+
+      /* Very narrow phones (≤ 380 px portrait) — tighten further */
+      @media (max-width: 380px) {
+        #stage-indicator { font-size: 12px; padding: 6px 10px; }
+        #brand-tag img   { height: 40px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene-canvas"></canvas>
+
+      <div id="stage-indicator">
+        <span class="stage-num">Phase 1</span> · Scaffold
+      </div>
+
+      <div id="brand-tag">
+        <img src="/spear-partners-logo.png" alt="Spear Partners" />
+      </div>
+
+      <!-- Stage chips: click to jump directly to a phase -->
+      <div id="stage-chips"></div>
+
+      <div id="controls">
+        <button id="btn-play" class="ctrl-btn">PLAY</button>
+        <button id="btn-reset" class="ctrl-btn">RESET</button>
+        <div id="progress-wrap" role="slider" aria-label="Animation progress" tabindex="0">
+          <div id="progress-track">
+            <div id="progress-fill"></div>
+            <div id="progress-thumb"></div>
+          </div>
+        </div>
+        <div id="time-display">0:00 / 0:00</div>
+        <button id="btn-export" class="ctrl-btn" title="Export the animation as MP4 / WebM">EXPORT</button>
+      </div>
+
+      <!-- Export resolution picker (hidden until EXPORT is clicked) -->
+      <div id="export-modal" role="dialog" aria-modal="true" aria-labelledby="export-modal-title">
+        <h3 id="export-modal-title">Export Animation</h3>
+        <p>Records the full animation from the start at the chosen resolution.
+           Output is MP4 if your browser supports it, otherwise WebM.</p>
+        <div class="res-options" id="res-options">
+          <label><input type="radio" name="res" value="720"  /> 720p   <span class="res-meta">1280 × 720</span></label>
+          <label><input type="radio" name="res" value="1080" checked /> 1080p  <span class="res-meta">1920 × 1080</span></label>
+          <label><input type="radio" name="res" value="2160" /> 4K     <span class="res-meta">3840 × 2160 — slow</span></label>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-export-cancel" class="ctrl-btn">CANCEL</button>
+          <button id="btn-export-start"  class="ctrl-btn">START</button>
+        </div>
+      </div>
+
+      <!-- Recording-progress strip (shown while MediaRecorder is capturing) -->
+      <div id="recording-overlay">
+        <span>RECORDING</span>
+        <div class="rec-progress"><div class="rec-progress-fill"></div></div>
+        <span id="rec-time">0:00 / 0:00</span>
+      </div>
+
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
