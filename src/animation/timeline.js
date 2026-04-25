@@ -40,9 +40,10 @@ export const STAGE_TIMES = {
   s11: INTRO_DURATION + 47.0,
   s12: INTRO_DURATION + 53.0,
   // Stage 12 effectively completes ~21 s in (porch reveal ends). End is
-  // pushed past that by 8 s so the audio fade-out has room to run AFTER
-  // Stage 12 is complete (fade starts s12 + 25, runs 4 s).
-  end: INTRO_DURATION + 82.0,
+  // pushed past that to accommodate (a) the head-on hold (~3 s),
+  // (b) the cross-fade to the photoreal rendering, and (c) the audio
+  // fade-out which now starts at s12 + 27.5 and runs 4 s.
+  end: INTRO_DURATION + 86.0,
 };
 
 /**
@@ -134,10 +135,12 @@ export function buildTimeline(refs, { paused = true } = {}) {
   // then fade the photoreal rendering in over 2 s. Champion Homes
   // branding on the top of the rendering is hidden by a CSS clip-path,
   // so only the home + trees + lawn appear.
-  // Cross-fade starts slightly earlier and runs longer than before so the
-  // transition is smoother — overlaps with the tail of the porch reveal /
-  // landscape grow rather than landing as a discrete switch.
-  const fadeInAt = STAGE_TIMES.s12 + 22.5;
+  // Hold on the head-on close shot for several seconds before fading to the
+  // photoreal rendering. Head-on shot lands around s12 + 22.5 (camera move
+  // ends INTRO + 78 = s12 + 25 actually — but porch + landscape are still
+  // populating until ~s12 + 23). Starting the fade at s12 + 26 gives the
+  // viewer a clean ~3 s read of the finished 3D scene first, then fades.
+  const fadeInAt = STAGE_TIMES.s12 + 26.0;
   tl.set('#final-rendering-wrap', { opacity: 0 }, 0);
   tl.to ('#final-rendering-wrap', {
     opacity: 1,

@@ -205,9 +205,9 @@ const tl = buildTimeline(refs, { paused: true });
   const audioEl = document.getElementById('soundtrack');
   if (audioEl) {
     tl.set(audioEl, { volume: 1.0 }, 0);
-    tl.to (audioEl, { volume: 0.0, duration: 4.0, ease: 'power1.out' }, STAGE_TIMES.s12 + 25);
+    tl.to (audioEl, { volume: 0.0, duration: 4.0, ease: 'power1.out' }, STAGE_TIMES.s12 + 27.5);
     // Hard-set volume to 0 right at the fade's nominal end (mobile insurance).
-    tl.set(audioEl, { volume: 0.0 }, STAGE_TIMES.s12 + 29);
+    tl.set(audioEl, { volume: 0.0 }, STAGE_TIMES.s12 + 31.5);
   }
 }
 
@@ -310,10 +310,25 @@ showStage();
       const ctx = canvas.getContext('2d');
       ctx.drawImage(loader, 0, 0);
 
-      // Sample a clean sky pixel from the upper-LEFT of the image (well away
-      // from the branding which is in the upper-RIGHT).
-      const sample = ctx.getImageData(W * 0.05, H * 0.04, 1, 1).data;
-      const sky = `rgb(${sample[0]}, ${sample[1]}, ${sample[2]})`;
+      // Sample a clean sky pixel. Avg over a small region near the very top
+      // of the image, slightly right-of-center, where the rendering shows
+      // pure sky between the home's roof peak and the right tree canopy.
+      // Single-pixel sampling at the upper-left was hitting tree leaves and
+      // producing a green fill. Averaging 5 sample points scattered along
+      // the top edge inside the trunk-of-sky band gives a robust sky color.
+      const samples = [
+        ctx.getImageData(W * 0.50, H * 0.02, 1, 1).data,
+        ctx.getImageData(W * 0.55, H * 0.02, 1, 1).data,
+        ctx.getImageData(W * 0.45, H * 0.03, 1, 1).data,
+        ctx.getImageData(W * 0.50, H * 0.04, 1, 1).data,
+        ctx.getImageData(W * 0.42, H * 0.02, 1, 1).data,
+      ];
+      let r = 0, g = 0, b = 0;
+      for (const s of samples) { r += s[0]; g += s[1]; b += s[2]; }
+      r = Math.round(r / samples.length);
+      g = Math.round(g / samples.length);
+      b = Math.round(b / samples.length);
+      const sky = `rgb(${r}, ${g}, ${b})`;
 
       // Paint over the branding region: roughly the right 65% of the top 14%
       // of the image. Slight margin in from the edge so we don't paint a
