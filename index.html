@@ -381,6 +381,26 @@
 
       /* Intro logo: min(70vw, 70vh) is fully responsive — no media queries needed. */
 
+      /* Final rendering — full-bleed image that fades in over the WebGL canvas
+         at the very end of the animation, dissolving from the 3D close-in shot
+         into the photoreal Champion Homes rendering. The image's TOP 18%
+         contains Champion Homes / York NE branding which the client wants
+         hidden in the final delivery — clip-path crops it off so only the
+         home + trees + lawn show through. object-fit: cover scales the image
+         to fill the viewport while preserving aspect, cropping any excess. */
+      #final-rendering {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center 70%;     /* bias the visible region toward the bottom (the home) */
+        opacity: 0;
+        pointer-events: none;
+        z-index: 5;
+        clip-path: inset(18% 0 0 0);     /* crop off the top 18% (Champion Homes branding) */
+      }
+
       /* Start-with-sound overlay (shown until user clicks; required by browsers
          to satisfy the autoplay-with-sound policy). */
       #start-overlay {
@@ -432,6 +452,11 @@
   <body>
     <div id="app">
       <canvas id="scene-canvas"></canvas>
+
+      <!-- Final photoreal rendering — fades in at end of Stage 12 to dissolve
+           the 3D close-in shot into the actual home rendering. clip-path
+           crops the Champion Homes / York NE branding off the top. -->
+      <img id="final-rendering" src="/final-rendering.png" alt="" />
 
       <!-- Start-with-sound overlay. Shown on initial load (because browsers
            block audio autoplay until the user interacts with the page).

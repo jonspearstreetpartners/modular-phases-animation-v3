@@ -127,6 +127,21 @@ export function buildTimeline(refs, { paused = true } = {}) {
   // (Outro logo regrow removed per user request — the persistent top-right
   //  brand-tag stays visible throughout, no separate logo flourish at end.)
 
+  // ----- FADE FROM 3D CLOSE-IN SHOT INTO PHOTOREAL RENDERING -----
+  // The camera lands on a front-on close-in shot of the home at master
+  // time = INTRO + 75 + ~3s = ~80.5 s. We start the cross-fade ~1.5 s
+  // after the camera lands (so the viewer registers the 3D shot first),
+  // then fade the photoreal rendering in over 2 s. Champion Homes
+  // branding on the top of the rendering is hidden by a CSS clip-path,
+  // so only the home + trees + lawn appear.
+  const fadeInAt = STAGE_TIMES.s12 + 24.0;       // ~2 s after head-on shot lands
+  tl.set('#final-rendering', { opacity: 0 }, 0);
+  tl.to ('#final-rendering', {
+    opacity: 1,
+    duration: 2.5,
+    ease: 'power2.inOut',
+  }, fadeInAt);
+
   tl.to({}, { duration: 1.5 }, STAGE_TIMES.end);
 
   return tl;
