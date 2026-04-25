@@ -375,11 +375,63 @@
       }
 
       /* Intro logo: min(70vw, 70vh) is fully responsive — no media queries needed. */
+
+      /* Start-with-sound overlay (shown until user clicks; required by browsers
+         to satisfy the autoplay-with-sound policy). */
+      #start-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(250, 250, 248, 0.96);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        cursor: pointer;
+        transition: opacity 0.4s ease;
+      }
+      #start-overlay.hide {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #start-overlay-button {
+        background: var(--spear-navy);
+        color: #fff;
+        border: none;
+        padding: 22px 50px;
+        font-size: 22px;
+        letter-spacing: 4px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        text-transform: uppercase;
+        box-shadow: 0 4px 18px rgba(26, 74, 122, 0.25);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      #start-overlay-button:hover {
+        transform: scale(1.03);
+        box-shadow: 0 6px 22px rgba(26, 74, 122, 0.35);
+      }
+      #start-overlay-hint {
+        margin-top: 22px;
+        font-size: 13px;
+        letter-spacing: 1.5px;
+        color: var(--text-gray);
+      }
     </style>
   </head>
   <body>
     <div id="app">
       <canvas id="scene-canvas"></canvas>
+
+      <!-- Start-with-sound overlay. Shown on initial load (because browsers
+           block audio autoplay until the user interacts with the page).
+           Clicking PLAY starts the animation and the soundtrack together.
+           Hidden after the first user click. -->
+      <div id="start-overlay">
+        <button id="start-overlay-button">▶  Play</button>
+        <div id="start-overlay-hint">CLICK TO START WITH SOUND</div>
+      </div>
 
       <div id="stage-indicator">
         <span class="stage-num">Phase 1</span> · Scaffold
@@ -411,8 +463,11 @@
         <button id="btn-export" class="ctrl-btn" title="Export the animation as MP4 / WebM">EXPORT</button>
       </div>
 
-      <!-- Soundtrack: synced to the master timeline; captured into the MP4 export -->
-      <audio id="soundtrack" preload="auto" src="/soundtrack.mp3"></audio>
+      <!-- Soundtrack: synced to the master timeline; captured into the MP4 export.
+           crossorigin=anonymous is required so Web Audio API can capture this
+           element's audio for export (createMediaElementSource taints the
+           element for CORS-unaware sources). -->
+      <audio id="soundtrack" preload="auto" crossorigin="anonymous" src="/soundtrack.mp3"></audio>
 
       <!-- Export resolution picker (hidden until EXPORT is clicked) -->
       <div id="export-modal" role="dialog" aria-modal="true" aria-labelledby="export-modal-title">

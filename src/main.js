@@ -302,8 +302,23 @@ function playAudio() {
   syncAudioToTimeline();
   const p = soundtrack.play();
   if (p && p.catch) {
-    p.catch(() => { audioBlocked = true; });
+    p.catch((err) => {
+      audioBlocked = true;
+      console.log('Audio autoplay blocked — will retry on first user gesture.', err?.name);
+      // Visual hint: flip button label so user knows to click
+      if (btnMute) btnMute.textContent = 'TAP TO PLAY';
+    });
+  } else {
+    audioBlocked = false;
   }
+  // Also clear the "blocked" state on success — play() returns a Promise that
+  // resolves when playback actually starts.
+  if (p && p.then) p.then(() => {
+    audioBlocked = false;
+    if (btnMute && btnMute.textContent === 'TAP TO PLAY') {
+      btnMute.textContent = 'MUTE';
+    }
+  }, () => {});
 }
 
 function pauseAudio() {
@@ -675,20 +690,57 @@ function tick() {
 }
 tick();
 
-// ---------- Auto-play after a short beat ----------
-// Audio playback may be blocked by the browser autoplay policy until the user
-// interacts with the page. We attempt it; if blocked, the SOUND button (or
-// any click on the canvas) will start it.
-gsap.delayedCall(1.0, () => { tl.play(); playAudio(); });
+// ---------- Start-with-sound overlay ----------
+// Browser autoplay policy blocks audio playback until the user interacts.
+// Show a fullscreen overlay with a PLAY button — clicking it satisfies the
+// autoplay policy AND starts the timeline + audio together. After the click,
+// the overlay fades out and the animation runs with full sound from t=0.
+const startOverlay = document.getElementById('start-overlay');
 
-// First-user-gesture fallback: if autoplay was blocked, the next click
-// anywhere on the page kicks off the soundtrack.
-window.addEventListener('pointerdown', () => {
-  if (audioBlocked && !userMuted && !tl.paused()) {
-    audioBlocked = false;
+function dismissStartOverlay() {
+  if (!startOverlay) return;
+  startOverlay.classList.add('hide');
+  setTimeout(() => startOverlay.remove(), 500);
+}
+
+if (startOverlay) {
+  startOverlay.addEventListener('click', () => {
+    // First gesture — both browser autoplay policy is satisfied AND the
+    // user has expressed intent to start. Reset both clocks to t=0 (timeline
+    // is already paused at 0) and start them in lockstep.
+    tl.pause(0);
+    if (soundtrack) {
+      try { soundtrack.currentTime = 0; } catch (_) {}
+    }
+    tl.play();
     playAudio();
+    dismissStartOverlay();
+  }, { once: true });
+} else {
+  // Fallback: if the overlay element is missing for any reason, fall back
+  // to the previous auto-play timer + first-gesture-unmute behavior.
+  gsap.delayedCall(1.0, () => { tl.play(); playAudio(); });
+}
+
+// First-user-gesture fallback: if autoplay was blocked, the next user
+// interaction (click, tap, or keypress) anywhere on the page kicks off the
+// soundtrack. Listens on document with capture so it fires before any other
+// click handlers might cancel propagation.
+function onFirstGesture() {
+  if (userMuted) return;
+  if (!audioBlocked && !soundtrack?.paused) return;
+  // Force a play attempt even if we previously thought it succeeded.
+  // Browsers will allow it now since this handler runs inside a user gesture.
+  if (soundtrack && soundtrack.paused && !tl.paused()) {
+    audioBlocked = false;
+    soundtrack.play().then(() => {
+      if (btnMute && btnMute.textContent === 'TAP TO PLAY') btnMute.textContent = 'MUTE';
+    }, () => {});
   }
-}, { once: false });
+}
+document.addEventListener('pointerdown', onFirstGesture, true);
+document.addEventListener('click',        onFirstGesture, true);
+document.addEventListener('keydown',      onFirstGesture, true);
 
 // ---------- Console banner ----------
 console.log(
