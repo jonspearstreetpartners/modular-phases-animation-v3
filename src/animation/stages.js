@@ -598,14 +598,32 @@ export function stageSiteStacking(tl, refs, t0) {
     if (truck) tl.to(truck.position, { z: 200, duration: 2.0, ease: 'power1.in' }, t0 + 3.0);
   }
 
-  // ===== STEP 4 (5.0 → 7.0) — Crane drives in from far -X to fixed parking =====
+  // ===== STEP 4 (5.0 → 7.0) — Crane drives in to fixed parking + hook positions over LOWER =====
   // Crane parks at world x = CRANE_PARK_X (= -25), permanently clear of all
   // modules and the foundation. After this point it doesn't move again until
   // step 7 when it drives away. Hook does all the work between.
+  //
+  // KEY FIX: while the crane is driving in, the hook simultaneously slides
+  // INWARD (in crane-local) so it ends up over the LOWER module's world X
+  // by the time the crane parks. Without this, the hook starts at its
+  // boom-tip rest (which puts it at world ~ 0, between the modules) and
+  // its first move sweeps EAST across the upper module on the way back to
+  // the lower — looks wrong.
   if (crane) {
     tl.set(crane,          { visible: true }, t0 + 5.0);
     tl.set(crane.position, { x: CRANE_PARK_X - 60 }, t0 + 5.0);
     tl.to (crane.position, { x: CRANE_PARK_X, duration: 2.0, ease: 'power2.out' }, t0 + 5.0);
+
+    if (hook && moduleA) {
+      // Snap hook elevation up so it doesn't drag through the truck/module on
+      // the way in, then slide its X to be over the lower module.
+      tl.set(hook.position, { y: 30 }, t0 + 5.0);
+      tl.to (hook.position, {
+        x: moduleA.position.x - CRANE_PARK_X,    // = worldToHookLocalX(moduleA.x)
+        duration: 2.0,
+        ease: 'power2.out',
+      }, t0 + 5.0);
+    }
   }
 
   // Helper: animate the hook to a given WORLD x and a given y (in crane-local
@@ -621,14 +639,12 @@ export function stageSiteStacking(tl, refs, t0) {
   };
 
   // ===== STEP 5 (7.0 → 11.0) — Crane picks up LOWER, places on foundation =====
-  // Lower module is currently at world (factoryLowerX, ~0, 0). We need it at
-  // (SITE_X, FOUNDATION_TOP, 0).
+  // The hook is ALREADY positioned over the lower module's X from step 4 —
+  // its first action is just to descend straight down to the module top.
   if (moduleA && hook) {
     const lowerStartX = moduleA.position.x;
-    // moduleA was riding on the truck — y was ~0 (its modelled position; the
-    // truck sat below). Snap to ground level just to be safe.
 
-    // Phase A (7.0 → 8.0) — hook descends to module top while moving over module
+    // Phase A (7.0 → 8.0) — hook descends straight down onto module top
     moveHook(lowerStartX, 8, t0 + 7.0, 1.0);
 
     // Phase B (8.0 → 9.0) — module + hook rise straight up

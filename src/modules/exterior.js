@@ -15,6 +15,7 @@ const frameMat     = () => shared('windowFrame', () => matte(COLORS.windowFrame)
 const glassMat     = () => shared('glass',     () => glass());
 const roofMat      = () => shared('shingle',   () => shingle());
 const sheathingMat = () => shared('sheathing', () => matte('#A88E66', { roughness: 0.9 }));   // exterior OSB/plywood
+const doorMat      = () => shared('front_door', () => matte(COLORS.doorWood, { roughness: 0.55 }));
 
 const subfloorTop = MODULE.joistHeight + MODULE.subfloorThickness;
 
@@ -182,6 +183,114 @@ export function buildModuleExterior({ side = 'A' } = {}) {
     }
   }
   group.add(sidingGroup);
+
+  // --- FRONT DOOR (lower module only) ---
+  // Styled to match the Champion 05-S30 rendering:
+  //   - Warm saddle/cinnamon wood
+  //   - TALL vertical glass panel (~60% of door height) — three-light style
+  //   - Slim white horizontal muntin dividing the glass area
+  //   - Small bronze handle on the right side
+  // Sits OUTBOARD of the siding on the +Z gable end. Lower module is side='A'.
+  if (side === 'A') {
+    const doorGroup = new THREE.Group();
+    doorGroup.name = 'front_door';
+
+    const doorH = 6.8;
+    const doorW = 3.0;
+    const doorThickness = 0.18;
+    const doorZ = L / 2 + SIDING_CTR_OFF + doorThickness / 2 + 0.01;
+    const doorY = subfloorTop + doorH / 2;
+    const doorX = W * 0.15;       // slightly right of center, matches rendering
+
+    // Door slab
+    const door = new THREE.Mesh(
+      new THREE.BoxGeometry(doorW, doorH, doorThickness),
+      doorMat(),
+    );
+    door.position.set(doorX, doorY, doorZ);
+    door.castShadow = true;
+    door.name = 'front_door_slab';
+    doorGroup.add(door);
+
+    // Tall glass panel — top 60% of the door, inset from edges
+    const glassW = doorW * 0.65;
+    const glassH = doorH * 0.55;
+    const glassY = subfloorTop + doorH * 0.65;       // centered in upper portion
+    const glassZ = doorZ + doorThickness / 2 + 0.005;
+    const tallGlass = new THREE.Mesh(
+      new THREE.BoxGeometry(glassW, glassH, 0.03),
+      glassMat(),
+    );
+    tallGlass.position.set(doorX, glassY, glassZ);
+    tallGlass.castShadow = false;
+    tallGlass.name = 'front_door_glass';
+    doorGroup.add(tallGlass);
+
+    // White horizontal muntin across the middle of the glass
+    const muntin = new THREE.Mesh(
+      new THREE.BoxGeometry(glassW + 0.03, 0.10, 0.04),
+      frameMat(),
+    );
+    muntin.position.set(doorX, glassY, glassZ + 0.005);
+    muntin.castShadow = false;
+    muntin.name = 'front_door_muntin';
+    doorGroup.add(muntin);
+
+    // Bronze handle on the right side, vertical bar style
+    const handleMat = shared('door_handle', () => matte('#5A3A1F', { roughness: 0.4, metalness: 0.7 }));
+    const handle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.45, 0.10),
+      handleMat,
+    );
+    handle.position.set(doorX + doorW * 0.38, subfloorTop + doorH * 0.42, doorZ + doorThickness / 2 + 0.05);
+    handle.castShadow = true;
+    handle.name = 'front_door_handle';
+    doorGroup.add(handle);
+
+    group.add(doorGroup);
+  }
+
+  // --- FLOOR-FRAME SKIRT (upper module only) ---
+  // When the upper module stacks on top of the lower, its floor frame (rim
+  // joists + floor joists, all warm-tan "framing" color) is exposed as a
+  // band of brown around the perimeter at the seam between modules. Cover
+  // it with a thin band of siding so the cladding reads as continuous.
+  if (side === 'B') {
+    const skirtGroup = new THREE.Group();
+    skirtGroup.name = 'skirt';
+
+    const skirtH = MODULE.joistHeight + MODULE.subfloorThickness; // band height
+    const skirtY = skirtH / 2;                                    // sits at module-local 0..skirtH
+
+    // Both long walls
+    for (const longSign of [-1, +1]) {
+      const xS = longSign * (W / 2 + SIDING_CTR_OFF);
+      const skirt = new THREE.Mesh(
+        new THREE.BoxGeometry(SIDING_THICK, skirtH, L),
+        sidingMat(),
+      );
+      skirt.position.set(xS, skirtY, 0);
+      skirt.castShadow = true;
+      skirt.receiveShadow = true;
+      skirt.name = `skirt_long_${longSign > 0 ? 'east' : 'west'}`;
+      skirtGroup.add(skirt);
+    }
+    // Both short walls
+    for (const sign of [-1, +1]) {
+      const zS = sign * (L / 2 + SIDING_CTR_OFF);
+      const skirt = new THREE.Mesh(
+        new THREE.BoxGeometry(W, skirtH, SIDING_THICK),
+        sidingMat(),
+      );
+      skirt.position.set(0, skirtY, zS);
+      skirt.castShadow = true;
+      skirt.receiveShadow = true;
+      skirt.name = `skirt_short_${sign > 0 ? 'south' : 'north'}`;
+      skirtGroup.add(skirt);
+    }
+
+    group.add(skirtGroup);
+  }
 
   // (Shingle slab moved to roof.js so it sits inside the hinge group and
   //  rotates with the trusses when the roof is lowered for transport.)

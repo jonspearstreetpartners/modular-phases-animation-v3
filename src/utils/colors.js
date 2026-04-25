@@ -29,7 +29,7 @@ export const COLORS = {
   roofShingle:     '#4D3F35',     // warm dark brown asphalt shingles
   windowGlass:     '#1F2530',     // dark, near-black with subtle reflections
   windowFrame:     '#FFFFFF',     // white trim around windows
-  doorWood:        '#9B6F4D',     // warm walnut/teak front door (used in v3 porch stage)
+  doorWood:        '#A86A3D',     // warm saddle/cinnamon front door (matches rendering)
 
   // Brand accent
   spearAccent:     '#1A4A7A',

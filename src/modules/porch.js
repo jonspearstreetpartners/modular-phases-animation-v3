@@ -132,30 +132,9 @@ export function buildPorch() {
     group.add(bal);
   }
 
-  // ---- Front door (wood + small glass panel near top) ----
-  const doorH = 6.8;
-  const doorW = 3;
-  const doorThickness = 0.15;
-  const doorZ = MODULE.length / 2 + 0.075;     // sits just outboard of front exterior wall
-  const doorY = subfloorTop + doorH / 2;
-  const doorX = porchW * 0.15;                 // offset right of center (matches rendering)
-  const door = new THREE.Mesh(
-    new THREE.BoxGeometry(doorW, doorH, doorThickness),
-    doorMat(),
-  );
-  door.position.set(doorX, doorY, doorZ);
-  door.castShadow = true;
-  door.name = 'porch_door';
-  group.add(door);
-
-  // Small dark glass panel near the top of the door
-  const doorGlass = new THREE.Mesh(
-    new THREE.BoxGeometry(doorW * 0.55, doorH * 0.20, 0.04),
-    doorGlassMat(),
-  );
-  doorGlass.position.set(doorX, subfloorTop + doorH * 0.78, doorZ + 0.02);
-  doorGlass.name = 'porch_door_glass';
-  group.add(doorGlass);
+  // (Front door + door glass removed from porch.js — they now live on the
+  //  lower module's exterior.js so the door is visible during transport and
+  //  doesn't appear out of nowhere when the porch assembles in Stage 12.)
 
   // ---- Walkway (concrete strip leading to the porch) ----
   const walkLen = 12;
@@ -171,7 +150,7 @@ export function buildPorch() {
   // Tag children with an assembly order index for the staggered reveal.
   const order = ['porch_deck', 'porch_column_west', 'porch_column_east',
                  'porch_roof', 'porch_railing_top', 'porch_railing_bot',
-                 'porch_door', 'porch_door_glass', 'porch_walkway'];
+                 'porch_walkway'];
   group.traverse((o) => {
     if (!o.name) return;
     const idx = order.indexOf(o.name);
