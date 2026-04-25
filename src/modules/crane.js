@@ -118,33 +118,46 @@ export function buildCrane() {
   mast.name = 'crane_mast';
   group.add(mast);
 
-  // ---- Boom (diagonal arm reaching east, +X) ----
-  const boomLen   = 32;
-  const boomAngle = -Math.PI / 7;       // ~26° below horizontal from the mast top, downward toward the load
-  const boomCenterX = (boomLen / 2) * Math.cos(boomAngle);
-  const boomCenterY = mastTop + (boomLen / 2) * Math.sin(boomAngle);
+  // ---- Boom pivot (group at the mast top; boom hangs off +X end) ----
+  // The boom rotates around this pivot so its tip rises/falls following the
+  // hook's elevation. updateCraneCables() computes the angle each frame from
+  // the current hook position so the boom always points at the load.
+  const boomLen = 32;
+  const boomPivot = new THREE.Group();
+  boomPivot.name = 'crane_boom_pivot';
+  boomPivot.position.set(0, mastTop, 0);
+  group.add(boomPivot);
 
   const boom = new THREE.Mesh(
     new THREE.BoxGeometry(boomLen, 1.4, 1.4),
     boomMat(),
   );
-  boom.position.set(boomCenterX, boomCenterY, 0);
-  boom.rotation.z = boomAngle;
+  // Place the boom so its left edge sits at the pivot (x=0 in pivot-local).
+  // Box geometry is centered on its origin, so push x by +boomLen/2.
+  boom.position.set(boomLen / 2, 0, 0);
   boom.castShadow = boom.receiveShadow = true;
   boom.name = 'crane_boom';
-  group.add(boom);
+  boomPivot.add(boom);
+
+  // Initial rest angle (~26° below horizontal from the mast top).
+  const initialBoomAngle = -Math.PI / 7;
+  boomPivot.rotation.z = initialBoomAngle;
 
   // ---- Hook + 4 cables (descend from boom tip) ----
-  // Hook tip world position when at REST: cantilevered to +X, hanging below boom
-  const boomTipX = boomLen * Math.cos(boomAngle);
-  const boomTipY = mastTop + boomLen * Math.sin(boomAngle);
+  // Hook starts at rest dangling 12 ft below the boom tip.
+  const initialBoomTipX = boomLen * Math.cos(initialBoomAngle);
+  const initialBoomTipY = mastTop + boomLen * Math.sin(initialBoomAngle);
 
-  // The hook is its own group so we can reparent modules into it during the lift.
   const hook = new THREE.Group();
   hook.name = 'crane_hook';
-  hook.userData.boomTipX = boomTipX;
-  hook.userData.boomTipY = boomTipY;
-  hook.position.set(boomTipX, boomTipY - 12, 0);    // initial rest dangle, 12 ft below tip
+  // boomTipX/Y are RUNTIME values updated each frame by updateCraneCables.
+  // They're used by the cable-length tracker (and by stages.js to know where
+  // the hook should be in pivot-relative space).
+  hook.userData.boomTipX = initialBoomTipX;
+  hook.userData.boomTipY = initialBoomTipY;
+  hook.userData.mastTop  = mastTop;     // for boom-angle math each frame
+  hook.userData.boomLen  = boomLen;
+  hook.position.set(initialBoomTipX, initialBoomTipY - 12, 0);
   group.add(hook);
 
   // Hook block (small dark box at the bottom of the hook group)
@@ -182,28 +195,61 @@ export function buildCrane() {
 
   group.userData.hook = hook;
   group.userData.cables = cables;
+  group.userData.boomPivot = boomPivot;
   return group;
 }
 
 /**
- * Update the 4 lift-cable cylinders so they always reach from the hook
- * spreader corners up to the boom tip. Called from the render loop while
- * the hook is animating during Stage 12. The hook is a child of the crane,
- * so cables compute their length in the crane's local frame.
+ * Update boom rotation + cable lengths each frame.
+ *  - Boom rotates around the mast top so its tip points at the hook's X
+ *    position. As the hook lowers to grab a module, the boom angles down;
+ *    as the hook rises during the cruise, the boom angles back up. The
+ *    overall effect is a boom that follows the load instead of clipping
+ *    through it.
+ *  - The 4 lift cables stretch vertically from the hook to the new boom-tip
+ *    Y. We approximate cables as straight-up lines (good enough at the iso
+ *    angle, since hookX stays close to boomTipX in the choreography).
  *
- * We approximate: each cable points straight UP (no XY shear). Length =
- * boomTipY - hookY. Since the hook stays roughly under the boom tip during
- * the lift this looks fine; if the hook swings far in X we'd need to angle
- * the cables but the choreography keeps the hook close.
+ * Called every frame from main.js's render loop while the crane is visible.
  */
 export function updateCraneCables(crane) {
   if (!crane || !crane.userData.cables) return;
   const hook = crane.userData.hook;
+  const boomPivot = crane.userData.boomPivot;
   if (!hook) return;
+
+  // ---- Boom rotation: aim boom tip at the current hook X ----
+  if (boomPivot) {
+    const mastTop = hook.userData.mastTop;
+    const boomLen = hook.userData.boomLen;
+    const hookX = hook.position.x;
+    const hookY = hook.position.y;
+
+    // The boom tip should sit slightly ABOVE the hook (the hook hangs from
+    // cables). Aim at (hookX, hookY + targetCableLen).
+    const targetCableLen = 8;
+    const aimY = hookY + targetCableLen;
+    const dx = hookX;
+    const dy = aimY - mastTop;
+
+    // Boom angle = atan of the line from mast top to aim point.
+    let angle = Math.atan2(dy, Math.max(0.5, dx));
+    // Clamp so the boom doesn't flip backward or stand straight up.
+    angle = Math.max(-Math.PI / 3, Math.min(Math.PI / 6, angle));
+    boomPivot.rotation.z = angle;
+
+    // Update cached boom tip position for the cable length math below.
+    const tipX = boomLen * Math.cos(angle);
+    const tipY = mastTop + boomLen * Math.sin(angle);
+    hook.userData.boomTipX = tipX;
+    hook.userData.boomTipY = tipY;
+  }
+
+  // ---- Cable length update ----
   const tipY = hook.userData.boomTipY;
   const hookY = hook.position.y;
   const len = Math.max(0.5, tipY - hookY);
   for (const c of crane.userData.cables) {
-    c.scale.y = len / 12;        // base geometry is 12 ft, scale.y ratios it
+    c.scale.y = len / 12;
   }
 }
