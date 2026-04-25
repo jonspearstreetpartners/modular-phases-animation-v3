@@ -174,14 +174,16 @@ const refs = {
 const tl = buildTimeline(refs, { paused: true });
 
 // ---------- Soundtrack fade-out at the end ----------
-// Register a fade tween directly on the master timeline so it scrubs correctly
-// with seeks. Fade begins 5s into Stage 12 (Site Assembly) and runs for 4s,
-// leaving the final ~10 seconds of the animation silent for the porch reveal.
+// Music plays at full volume through ALL of Stage 12 (Site Assembly,
+// stage runs ~21 s). Then fades over 4 s starting 4 s after the stage's
+// last animation completes — the porch reveal finishes around s12 + 21
+// so the fade begins at s12 + 25. Tween lives on the master timeline so
+// it scrubs correctly when the user drags the progress bar.
 {
   const audioEl = document.getElementById('soundtrack');
   if (audioEl) {
     tl.set(audioEl, { volume: 1.0 }, 0);
-    tl.to (audioEl, { volume: 0.0, duration: 4.0, ease: 'power1.out' }, STAGE_TIMES.s12 + 5);
+    tl.to (audioEl, { volume: 0.0, duration: 4.0, ease: 'power1.out' }, STAGE_TIMES.s12 + 25);
   }
 }
 

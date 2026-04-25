@@ -39,7 +39,10 @@ export const STAGE_TIMES = {
   s10: INTRO_DURATION + 42.0,
   s11: INTRO_DURATION + 47.0,
   s12: INTRO_DURATION + 53.0,
-  end: INTRO_DURATION + 74.0,
+  // Stage 12 effectively completes ~21 s in (porch reveal ends). End is
+  // pushed past that by 8 s so the audio fade-out has room to run AFTER
+  // Stage 12 is complete (fade starts s12 + 25, runs 4 s).
+  end: INTRO_DURATION + 82.0,
 };
 
 /**
