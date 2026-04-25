@@ -173,6 +173,18 @@ const refs = {
 };
 const tl = buildTimeline(refs, { paused: true });
 
+// ---------- Soundtrack fade-out at the end ----------
+// Register a fade tween directly on the master timeline so it scrubs correctly
+// with seeks. Fade begins 5s into Stage 12 (Site Assembly) and runs for 4s,
+// leaving the final ~10 seconds of the animation silent for the porch reveal.
+{
+  const audioEl = document.getElementById('soundtrack');
+  if (audioEl) {
+    tl.set(audioEl, { volume: 1.0 }, 0);
+    tl.to (audioEl, { volume: 0.0, duration: 4.0, ease: 'power1.out' }, STAGE_TIMES.s12 + 5);
+  }
+}
+
 // ---------- Debug controls ----------
 let controls = null;
 if (DEBUG) {
