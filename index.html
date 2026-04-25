@@ -73,7 +73,10 @@
       }
       #intro-logo img {
         display: block;
-        height: 360px;          /* big and dominant at start */
+        /* GIANT — fills most of the viewport. min(70vw, 70vh) makes the logo
+           proportional to the smaller viewport dimension so it never
+           overflows on any aspect ratio while still dominating the frame. */
+        height: min(70vw, 70vh);
         width: auto;
       }
 
@@ -371,9 +374,7 @@
         #brand-tag img   { height: 40px; }
       }
 
-      /* Intro logo scales down on smaller screens so it fits in portrait */
-      @media (max-width: 768px) { #intro-logo img { height: 240px; } }
-      @media (max-width: 380px) { #intro-logo img { height: 160px; } }
+      /* Intro logo: min(70vw, 70vh) is fully responsive — no media queries needed. */
     </style>
   </head>
   <body>
@@ -406,8 +407,12 @@
           </div>
         </div>
         <div id="time-display">0:00 / 0:00</div>
+        <button id="btn-mute"   class="ctrl-btn" title="Toggle soundtrack">MUTE</button>
         <button id="btn-export" class="ctrl-btn" title="Export the animation as MP4 / WebM">EXPORT</button>
       </div>
+
+      <!-- Soundtrack: synced to the master timeline; captured into the MP4 export -->
+      <audio id="soundtrack" preload="auto" src="/soundtrack.mp3"></audio>
 
       <!-- Export resolution picker (hidden until EXPORT is clicked) -->
       <div id="export-modal" role="dialog" aria-modal="true" aria-labelledby="export-modal-title">

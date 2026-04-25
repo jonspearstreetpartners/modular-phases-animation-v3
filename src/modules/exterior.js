@@ -119,22 +119,52 @@ export function buildModuleExterior({ side = 'A' } = {}) {
     const winGroup = new THREE.Group();
     winGroup.name = `window_${i}`;
 
-    // Frame (slightly larger box, hollow visual)
-    const frame = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, winH, winW),
+    // Backing plane (sits flush in the wall opening, behind glass + trim)
+    const back = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, winH, winW),
       frameMat(),
     );
-    frame.position.set(0, 0, 0);
-    frame.castShadow = true;
-    winGroup.add(frame);
+    back.position.set(0, 0, 0);
+    back.castShadow = true;
+    winGroup.add(back);
 
-    // Glass (thinner box inset)
+    // Glass pane (slightly outboard of backing)
     const pane = new THREE.Mesh(
       new THREE.BoxGeometry(0.04, winH * 0.85, winW * 0.85),
       glassMat(),
     );
     pane.position.set(outerLongSign * 0.04, 0, 0);
     winGroup.add(pane);
+
+    // Picture-frame TRIM around the window — 4 thicker white casing strips
+    // standing proud of the siding so the window reads as recessed inside
+    // a substantial trim frame (matches the rendering's chunky white casings).
+    // Trim is ~3" wide, projects 1" outboard of the siding face.
+    const trimW = 0.25;            // casing width (perpendicular to opening edge)
+    const trimT = 0.12;             // how far it stands proud (along wall normal X)
+    const trimX = outerLongSign * (TOTAL_OFF * 0.6 + trimT / 2);
+    // Top + bottom (run along Z, full width including corners)
+    for (const sy of [-1, +1]) {
+      const strip = new THREE.Mesh(
+        new THREE.BoxGeometry(trimT, trimW, winW + 2 * trimW),
+        frameMat(),
+      );
+      strip.position.set(trimX, sy * (winH / 2 + trimW / 2), 0);
+      strip.castShadow = true;
+      strip.name = `window_${i}_trim_${sy > 0 ? 'top' : 'bot'}`;
+      winGroup.add(strip);
+    }
+    // Left + right (run along Y, between the top/bottom strips)
+    for (const sz of [-1, +1]) {
+      const strip = new THREE.Mesh(
+        new THREE.BoxGeometry(trimT, winH, trimW),
+        frameMat(),
+      );
+      strip.position.set(trimX, 0, sz * (winW / 2 + trimW / 2));
+      strip.castShadow = true;
+      strip.name = `window_${i}_trim_${sz > 0 ? 'right' : 'left'}`;
+      winGroup.add(strip);
+    }
 
     winGroup.position.set(winXOut, winY, wz);
     windowsGroup.add(winGroup);
@@ -187,6 +217,33 @@ export function buildModuleExterior({ side = 'A' } = {}) {
       );
       vMuntin.position.set(0, 0, 0.005);
       winGroup.add(vMuntin);
+
+      // Picture-frame TRIM (chunky white casing standing proud of the wall)
+      const trimW = 0.25;
+      const trimT = 0.12;
+      const trimZ = trimT / 2 + 0.04;
+      // Top + bottom strips
+      for (const sy of [-1, +1]) {
+        const strip = new THREE.Mesh(
+          new THREE.BoxGeometry(frontWinW + 2 * trimW, trimW, trimT),
+          frameMat(),
+        );
+        strip.position.set(0, sy * (frontWinH / 2 + trimW / 2), trimZ);
+        strip.castShadow = true;
+        strip.name = `front_trim_${sx > 0 ? 'east' : 'west'}_${sy > 0 ? 'top' : 'bot'}`;
+        winGroup.add(strip);
+      }
+      // Left + right strips
+      for (const sxx of [-1, +1]) {
+        const strip = new THREE.Mesh(
+          new THREE.BoxGeometry(trimW, frontWinH, trimT),
+          frameMat(),
+        );
+        strip.position.set(sxx * (frontWinW / 2 + trimW / 2), 0, trimZ);
+        strip.castShadow = true;
+        strip.name = `front_trim_${sx > 0 ? 'east' : 'west'}_${sxx > 0 ? 'right' : 'left'}`;
+        winGroup.add(strip);
+      }
 
       winGroup.position.set(sx * frontSpacing, frontWinY, frontWinZ);
       windowsGroup.add(winGroup);

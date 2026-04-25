@@ -292,14 +292,13 @@ export function stageRoof(tl, refs, t0) {
       });
     });
 
-    // Reveal the gable-end siding fills AFTER the last truss has dropped, so
-    // the empty triangles aren't visible during the truss reveal sequence.
-    const lastIdx = Math.max(0, indices.length - 1);
-    const gableRevealAt = t0 + 0.2 + lastIdx * 0.15 + 0.7;
+    // Gable-end siding fills are NOT revealed here. They get installed in
+    // Stage 12 (site assembly) after stacking, because if they appeared during
+    // Stage 8 they would block the rafter hinges from folding flat in Stage 11
+    // for transport.
     m.traverse((o) => {
       if (o.name && o.name.startsWith('gable_')) {
         tl.set(o, { visible: false }, t0);
-        tl.set(o, { visible: true },  gableRevealAt);
       }
     });
   }
@@ -718,6 +717,20 @@ export function stageSiteStacking(tl, refs, t0) {
   if (crane) {
     moveHook(CRANE_PARK_X + 5, 35, t0 + 14.5, 0.5);
     tl.to(crane.position, { x: CRANE_PARK_X - 80, duration: 2.0, ease: 'power1.in' }, t0 + 15.0);
+  }
+
+  // ===== STEP 7.5 (15.5) — Reveal gable-end siding fills =====
+  // The two triangular gable wall fills install AFTER stacking + after the
+  // crane has cleared. Hidden during stages 8-11 so they don't block the
+  // rafter hinges from folding flat for transport.
+  for (const m of [refs.moduleA, refs.moduleB]) {
+    m.traverse((o) => {
+      if (o.name && o.name.startsWith('gable_')) {
+        tl.set(o.scale, { x: 0.001, y: 0.001, z: 0.001 }, t0 + 15.5);
+        tl.set(o,       { visible: true                 }, t0 + 15.5);
+        tl.to (o.scale, { x: 1, y: 1, z: 1, duration: 0.5, ease: 'back.out(1.4)' }, t0 + 15.5);
+      }
+    });
   }
 
   // ===== STEP 8 (16.5 → 19.0) — Porch reveal piece-by-piece =====

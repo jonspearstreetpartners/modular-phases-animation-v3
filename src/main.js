@@ -279,6 +279,47 @@ const chipEls = STAGE_CHIPS.map(({ time, num, label }) => {
   return btn;
 });
 
+// ===== Soundtrack: synced to master timeline =====
+// audio.currentTime is set on every seek; play()/pause() mirror tl state.
+// MUTE toggle just sets audio.muted (allows UI control without affecting
+// MP4 export, which always wants audio captured).
+const soundtrack = document.getElementById('soundtrack');
+const btnMute    = document.getElementById('btn-mute');
+let userMuted = false;             // user explicitly clicked mute
+let audioBlocked = false;          // browser blocked autoplay (no user gesture yet)
+
+function syncAudioToTimeline() {
+  if (!soundtrack) return;
+  const t = tl.time();
+  // Seek if drift is more than 0.15 s (avoids constant micro-seeks during play).
+  if (Math.abs((soundtrack.currentTime || 0) - t) > 0.15) {
+    try { soundtrack.currentTime = Math.max(0, t); } catch (_) {}
+  }
+}
+
+function playAudio() {
+  if (!soundtrack || userMuted) return;
+  syncAudioToTimeline();
+  const p = soundtrack.play();
+  if (p && p.catch) {
+    p.catch(() => { audioBlocked = true; });
+  }
+}
+
+function pauseAudio() {
+  if (!soundtrack) return;
+  soundtrack.pause();
+}
+
+btnMute?.addEventListener('click', () => {
+  userMuted = !userMuted;
+  if (soundtrack) soundtrack.muted = userMuted;
+  btnMute.textContent = userMuted ? 'MUTED' : 'MUTE';
+  // If user un-mutes during playback, kick off audio
+  if (!userMuted && !tl.paused()) playAudio();
+  if (userMuted) pauseAudio();
+});
+
 // ----- Seek + UI sync -----
 function seekTo(time, { pause = false } = {}) {
   const dur = tl.duration();
@@ -287,6 +328,8 @@ function seekTo(time, { pause = false } = {}) {
   tl.time(t);
   setBtnLabel();
   updateTimeUI();
+  syncAudioToTimeline();
+  if (pause) pauseAudio();
 }
 
 function updateTimeUI() {
@@ -319,16 +362,23 @@ function setBtnLabel() {
 btnPlay?.addEventListener('click', () => {
   if (tl.progress() >= 1) {
     tl.restart();
+    playAudio();              // restart the soundtrack from the top too
   } else if (tl.paused()) {
     tl.play();
+    playAudio();
   } else {
     tl.pause();
+    pauseAudio();
   }
   setBtnLabel();
 });
 
 btnReset?.addEventListener('click', () => {
   tl.pause(0);
+  if (soundtrack) {
+    pauseAudio();
+    try { soundtrack.currentTime = 0; } catch (_) {}
+  }
   setBtnLabel();
   updateTimeUI();
 });
@@ -367,7 +417,10 @@ function endScrub(e) {
   if (e?.pointerId !== undefined && progressWrap.hasPointerCapture(e.pointerId)) {
     progressWrap.releasePointerCapture(e.pointerId);
   }
-  if (resumeAfterScrub && tl.progress() < 1) tl.play();
+  if (resumeAfterScrub && tl.progress() < 1) {
+    tl.play();
+    playAudio();
+  }
   setBtnLabel();
 }
 
@@ -486,11 +539,55 @@ async function runExport(targetW, targetH) {
   // ----- Setup MediaRecorder -----
   // Stream the canvas at 60fps. Bitrate scales with resolution so 4K isn't
   // starved and 720p doesn't waste bandwidth.
-  const stream = canvas.captureStream(60);
+  const videoStream = canvas.captureStream(60);
   const mimeType = pickRecorderMimeType();
   const bitsPerPixel = 0.12;
   const videoBitsPerSecond = Math.round(targetW * targetH * 60 * bitsPerPixel);
-  const recorder = new MediaRecorder(stream, mimeType ? { mimeType, videoBitsPerSecond } : { videoBitsPerSecond });
+  const audioBitsPerSecond = 192000;
+
+  // Capture the soundtrack audio into the same MediaRecorder via a Web Audio
+  // graph. createMediaElementSource() taps the <audio> element; createDestination()
+  // gives a MediaStream we can merge with the canvas video stream.
+  let mergedStream = videoStream;
+  let audioContext = null;
+  let exportAudioPlaybackRestore = null;     // function to restore the user's audio state after export
+  if (soundtrack) {
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      // We can only call createMediaElementSource ONCE per element per page. To
+      // avoid breaking later exports, we cache the source on a global flag.
+      if (!soundtrack._mediaSource) {
+        soundtrack._mediaSource = audioContext.createMediaElementSource(soundtrack);
+      } else {
+        // Reusing existing source — must use its existing audioContext
+        audioContext = soundtrack._mediaSource.context;
+      }
+      const dest = audioContext.createMediaStreamDestination();
+      // Route audio to BOTH the speakers AND the recorder destination. The
+      // existing connection to ctx.destination handles speakers; the new
+      // connection routes to the recording stream too.
+      try { soundtrack._mediaSource.connect(audioContext.destination); } catch (_) {}
+      soundtrack._mediaSource.connect(dest);
+
+      // Force-unmute the audio element for the duration of the export so the
+      // soundtrack is captured even if the user clicked SOUND -> MUTED on the UI.
+      const wasMuted = soundtrack.muted;
+      soundtrack.muted = false;
+      exportAudioPlaybackRestore = () => { soundtrack.muted = wasMuted; };
+
+      // Combine video tracks + audio tracks into one stream.
+      mergedStream = new MediaStream([
+        ...videoStream.getVideoTracks(),
+        ...dest.stream.getAudioTracks(),
+      ]);
+    } catch (e) {
+      console.warn('Audio capture for export failed; recording silent video.', e);
+    }
+  }
+
+  const recorder = new MediaRecorder(mergedStream, mimeType
+    ? { mimeType, videoBitsPerSecond, audioBitsPerSecond }
+    : { videoBitsPerSecond, audioBitsPerSecond });
   const chunks = [];
   recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
 
@@ -579,7 +676,19 @@ function tick() {
 tick();
 
 // ---------- Auto-play after a short beat ----------
-gsap.delayedCall(1.0, () => tl.play());
+// Audio playback may be blocked by the browser autoplay policy until the user
+// interacts with the page. We attempt it; if blocked, the SOUND button (or
+// any click on the canvas) will start it.
+gsap.delayedCall(1.0, () => { tl.play(); playAudio(); });
+
+// First-user-gesture fallback: if autoplay was blocked, the next click
+// anywhere on the page kicks off the soundtrack.
+window.addEventListener('pointerdown', () => {
+  if (audioBlocked && !userMuted && !tl.paused()) {
+    audioBlocked = false;
+    playAudio();
+  }
+}, { once: false });
 
 // ---------- Console banner ----------
 console.log(
