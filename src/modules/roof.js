@@ -1,16 +1,27 @@
 // Roof framing — FULL gable spanning module width, with the peak running along
 // the LENGTH (Z axis). Gable end faces forward (matches the v3 rendering's
-// front-facing gable). Each truss is a triangle: bottom chord + two rafters
-// meeting at a peak above the module centerline + king-post web.
+// front-facing gable).
 //
-// Truss local space:
-//   - Plane: XY (depth = trussDepth in Z)
-//   - Bottom chord centered on local origin (so x: -W/2..+W/2)
-//   - Local Y=0 is the underside of the bottom chord (sits on wall top plate)
-//   - Peak at local x=0, y=chordH+rise
+// v3 STRUCTURE: the roof is split into THREE groups so the two pitch faces
+// can fold INDIVIDUALLY for transport (matches real modular factory practice
+// where each rafter is hinged at the eave and folds down onto the bottom
+// chord, rather than the entire roof tipping to one side):
 //
-// v3 NOTE: roof attaches only to the UPPER stacked module. The lower module
-// has a flat ceiling assembly instead (see floor.js).
+//   Roof
+//     Roof_static       — bottom chords (one per truss spacing) + king posts.
+//                         Stays bolted to the wall plate; doesn't move.
+//     Roof_hinge_west   — pivots at the -X eave. Contains west rafters + west
+//                         shingle slab. Rotating around its local Z axis folds
+//                         the west pitch DOWN inward onto the static chords.
+//     Roof_hinge_east   — pivots at the +X eave. Contains east rafters + east
+//                         shingle slab. Folds DOWN inward in the opposite
+//                         direction.
+//
+// To fold flat for transport:
+//   Roof_hinge_west.rotation.z = -rafterAngle   (slope up→horizontal inward)
+//   Roof_hinge_east.rotation.z = +rafterAngle
+//
+// rafterAngle = atan2(rise, W/2), where rise = (W/2) * MODULE.roofPitch.
 
 import * as THREE from 'three';
 import { COLORS } from '../utils/colors.js';
@@ -20,172 +31,149 @@ import { MODULE } from '../utils/dimensions.js';
 const framingMat = () => shared('framing', () => matte(COLORS.framing));
 
 /**
- * Build one full gable truss — bottom chord + two sloped rafters meeting at the
- * centerline peak + king-post web at the centerline.
- */
-export function buildGableTruss({ width = MODULE.width } = {}) {
-  const group = new THREE.Group();
-  group.name = 'GableTruss';
-
-  const chordH = MODULE.trussChordHeight;
-  const dep    = MODULE.trussDepth;
-  const rise   = (width / 2) * MODULE.roofPitch;     // pitch over the run (half-width)
-
-  // --- Bottom chord (horizontal, full width) ---
-  const bottomChord = new THREE.Mesh(
-    new THREE.BoxGeometry(width, chordH, dep),
-    framingMat(),
-  );
-  bottomChord.position.set(0, chordH / 2, 0);
-  bottomChord.castShadow = true;
-  bottomChord.receiveShadow = true;
-  bottomChord.name = 'bottomChord';
-  group.add(bottomChord);
-
-  // --- Two sloped rafters meeting at the centerline peak ---
-  // Rafter geometry: build a horizontal box of length = slopeLen and rotate around Z.
-  for (const sign of [-1, +1]) {
-    const lowX  = sign * (width / 2);
-    const highX = 0;
-    const lowY  = chordH;
-    const highY = chordH + rise;
-
-    const dx = highX - lowX;
-    const dy = highY - lowY;
-    const rafterLen = Math.sqrt(dx * dx + dy * dy);
-    const rafterAngle = Math.atan2(dy, dx);
-
-    // Offset the rafter perpendicular to its length so its BOTTOM face sits
-    // flush on the chord/peak line rather than centered on it.
-    const perpX = -Math.sin(rafterAngle);
-    const perpY =  Math.cos(rafterAngle);
-    const midX = (lowX + highX) / 2 + (chordH / 2) * perpX;
-    const midY = (lowY + highY) / 2 + (chordH / 2) * perpY;
-
-    const rafter = new THREE.Mesh(
-      new THREE.BoxGeometry(rafterLen, chordH, dep),
-      framingMat(),
-    );
-    rafter.position.set(midX, midY, 0);
-    rafter.rotation.z = rafterAngle;
-    rafter.castShadow = true;
-    rafter.receiveShadow = true;
-    rafter.name = `rafter_${sign > 0 ? 'east' : 'west'}`;
-    group.add(rafter);
-  }
-
-  // --- King-post web at the centerline (vertical post from chord to peak) ---
-  const webH = rise;
-  const web = new THREE.Mesh(
-    new THREE.BoxGeometry(chordH, webH, dep),
-    framingMat(),
-  );
-  web.position.set(0, chordH + webH / 2, 0);
-  web.castShadow = true;
-  web.receiveShadow = true;
-  web.name = 'web_kingpost';
-  group.add(web);
-
-  group.userData.rise = rise;
-  return group;
-}
-
-/**
- * Build all gable trusses + two roofing slabs for ONE module, wrapped in a
- * HINGE GROUP whose origin sits at one EAVE (the long edge of the module on
- * the -X side). Rotating the hinge group around its Z axis lowers the entire
- * roof flat for transport (Stage 11 in v1; will be reused in v3 transport stage).
+ * Build all roof framing + shingle slabs for the module, split across the
+ * three groups described above so two rafter hinges can fold independently.
  *
- * Hierarchy:
- *   Roof                          (module-local container)
- *     Roof_hinge                  (origin at the -X eave; rotates Z to fold roof)
- *       truss_<i>                 (gable trusses along the length)
- *       roof_slab_west / east     (the two shingle slabs, hinge with the trusses)
- *
- * v3: side parameter retained for future per-module customization but is
- * unused in the geometry — single-module home, no marriage wall.
+ * @param {object} opts
+ * @param {string} [opts.side]  retained for v1 compat; unused in v3 (single
+ *                              full-gable roof, no marriage wall).
  */
 export function buildModuleRoof({ side = 'roof' } = {}) {
-  const group = new THREE.Group();
-  group.name = 'Roof';
-  group.userData.side = side;
+  const root = new THREE.Group();
+  root.name = 'Roof';
+  root.userData.side = side;
 
   const L  = MODULE.length;
   const W  = MODULE.width;
   const sp = MODULE.trussSpacing;
   const y0 = MODULE.joistHeight + MODULE.subfloorThickness + MODULE.wallHeight;
 
-  // Hinge sits at one eave (the -X long edge). When the hinge rotates around
-  // its local Z axis by +PITCH_ANGLE the entire roof flops flat in the +X
-  // direction (good for transport). Animation stays the same as v1's hinge.
-  const hingeSign = -1;
-  const hingeX    = hingeSign * (W / 2);
-  const hingeY    = y0;
+  const chordH   = MODULE.trussChordHeight;
+  const trussDep = MODULE.trussDepth;
+  const rise        = (W / 2) * MODULE.roofPitch;
+  const rafterLen   = Math.sqrt((W / 2) * (W / 2) + rise * rise);
+  const rafterAngle = Math.atan2(rise, W / 2);     // angle of the SLOPE off horizontal
 
-  const hinge = new THREE.Group();
-  hinge.name = 'Roof_hinge';
-  hinge.userData.hingeSign = hingeSign;
-  hinge.position.set(hingeX, hingeY, 0);
-  group.add(hinge);
+  // --- Three sub-groups ---------------------------------------------------
+  const staticGroup = new THREE.Group();
+  staticGroup.name = 'Roof_static';
+  root.add(staticGroup);
 
-  // ---- Trusses along the length (Z axis), positioned in hinge-relative coords ----
-  const innerL   = L - MODULE.studDepth * 2;
+  const hingeWest = new THREE.Group();
+  hingeWest.name = 'Roof_hinge_west';
+  hingeWest.userData.foldSign = -1;                // rotation.z to fold flat
+  hingeWest.userData.foldAngle = rafterAngle;
+  hingeWest.position.set(-W / 2, y0, 0);            // pivot at the -X eave
+  root.add(hingeWest);
+
+  const hingeEast = new THREE.Group();
+  hingeEast.name = 'Roof_hinge_east';
+  hingeEast.userData.foldSign = +1;
+  hingeEast.userData.foldAngle = rafterAngle;
+  hingeEast.position.set(+W / 2, y0, 0);            // pivot at the +X eave
+  root.add(hingeEast);
+
+  // --- Per-truss spacing along Z ------------------------------------------
+  const innerL    = L - MODULE.studDepth * 2;
   const intervals = Math.round(innerL / sp);
   const actualSp  = innerL / intervals;
+
   for (let i = 0; i <= intervals; i++) {
     const z = -innerL / 2 + i * actualSp;
-    const truss = buildGableTruss({ width: W });
-    truss.position.set(-hingeX, 0, z);
-    truss.name = `truss_${i}`;
-    hinge.add(truss);
-  }
 
-  // ---- Two roofing slabs (one per pitched face). Each slab covers half the
-  //      gable: from centerline-peak down to one eave. Slab `west` covers the
-  //      -X face; slab `east` covers the +X face.
-  const rise = (W / 2) * MODULE.roofPitch;
-  const slopeLen = Math.sqrt((W / 2) * (W / 2) + rise * rise);
-
-  for (const sign of [-1, +1]) {
-    // Slope angle: from peak (high) at x=0 down to eave (low) at x=±W/2.
-    // For sign=+1 (east face): slope runs +X downward, so dx>0, dy<0 → angle<0.
-    // For sign=-1 (west face): slope runs -X downward, so dx<0, dy<0 → angle>π/2.
-    const lowX  = sign * (W / 2);
-    const highX = 0;
-    const lowY  = MODULE.trussChordHeight;
-    const highY = MODULE.trussChordHeight + rise;
-    const angle = Math.atan2(highY - lowY, highX - lowX);
-
-    // Slab center in module-local coords (at chord-top origin), offset perpendicular
-    // so the slab's bottom face sits flush on the rafter top edge.
-    const perpX = -Math.sin(angle);
-    const perpY =  Math.cos(angle);
-    const localMidX = (lowX + highX) / 2 + (MODULE.trussChordHeight / 2) * perpX;
-    const localMidY = (lowY + highY) / 2 + (MODULE.trussChordHeight / 2) * perpY;
-
-    // Module-local → hinge-local conversion (hinge is at (hingeX, y0))
-    const slabX = localMidX - hingeX;
-    const slabY = localMidY + (y0 - y0);    // y0 cancels because both are at chord-base
-
-    const slab = new THREE.Mesh(
-      new THREE.BoxGeometry(slopeLen, 0.08, L * 1.04),
-      shared('shingle', () => shingle()),
+    // ---- Bottom chord (full width, sits on wall plate) → STATIC ----
+    const chord = new THREE.Mesh(
+      new THREE.BoxGeometry(W, chordH, trussDep),
+      framingMat(),
     );
-    slab.position.set(slabX, slabY, 0);
-    slab.rotation.z = angle;
-    slab.castShadow = true;
-    slab.receiveShadow = true;
-    slab.name = `roof_slab_${sign > 0 ? 'east' : 'west'}`;
-    hinge.add(slab);
+    chord.position.set(0, y0 + chordH / 2, z);
+    chord.castShadow = chord.receiveShadow = true;
+    chord.name = `chord_${i}`;
+    chord.userData.trussIndex = i;
+    staticGroup.add(chord);
+
+    // ---- King-post web (vertical center post) → STATIC ----
+    const web = new THREE.Mesh(
+      new THREE.BoxGeometry(chordH, rise, trussDep),
+      framingMat(),
+    );
+    web.position.set(0, y0 + chordH + rise / 2, z);
+    web.castShadow = web.receiveShadow = true;
+    web.name = `kingpost_${i}`;
+    web.userData.trussIndex = i;
+    staticGroup.add(web);
+
+    // ---- West rafter → WEST HINGE (hinge-local coords) ----
+    // In the west hinge's local frame: pivot at (0, 0), rafter slopes up and
+    // to the right ending at peak (W/2, rise). Build the rafter as a
+    // horizontal box, anchor its origin at the -X end via geometry translate,
+    // then rotate by +rafterAngle so it points up-the-slope.
+    {
+      const geo = new THREE.BoxGeometry(rafterLen, chordH, trussDep);
+      geo.translate(rafterLen / 2, 0, 0);   // pivot at -X end
+      // Offset perpendicular so the rafter's bottom face sits flush on the
+      // chord/peak line (rather than centered on it).
+      geo.translate(0, chordH / 2, 0);
+
+      const m = new THREE.Mesh(geo, framingMat());
+      m.position.set(0, chordH, z);          // sit atop the chord
+      m.rotation.z = +rafterAngle;
+      m.castShadow = m.receiveShadow = true;
+      m.name = `rafter_west_${i}`;
+      m.userData.trussIndex = i;
+      hingeWest.add(m);
+    }
+
+    // ---- East rafter → EAST HINGE (hinge-local coords) ----
+    // East hinge pivot at (+W/2, y0). Local +X is still world +X. The rafter
+    // extends from pivot toward -X (inward) and up. Build as horizontal box
+    // anchored at -X end via geometry translate, then rotate by π - rafterAngle.
+    {
+      const geo = new THREE.BoxGeometry(rafterLen, chordH, trussDep);
+      geo.translate(rafterLen / 2, 0, 0);
+      geo.translate(0, chordH / 2, 0);
+
+      const m = new THREE.Mesh(geo, framingMat());
+      m.position.set(0, chordH, z);
+      m.rotation.z = Math.PI - rafterAngle;
+      m.castShadow = m.receiveShadow = true;
+      m.name = `rafter_east_${i}`;
+      m.userData.trussIndex = i;
+      hingeEast.add(m);
+    }
   }
 
-  // ---- Two GABLE-END walls (closing off the open Z ends of the gable).
-  //      These are simple triangular plates filling the trussed-out gable shape.
-  //      Built as box geometries with vertices manipulated, but simpler: use
-  //      a long thin box approximating the wedge. For this pass, use a flat
-  //      vertical wall slab on each end with the gable triangle painted on by
-  //      virtue of its shape — actually we'll skip this for commit 1 and add
-  //      proper gable-end framing in a later pass.
+  // --- Two shingle slabs, one per pitch face, attached to matching hinge --
+  // Each slab covers from peak down to one eave. We build it once in the same
+  // local-frame convention used for the rafters (anchored at eave end, sloping
+  // up to peak via rotation.z).
+  const slabMat = shared('shingle', () => shingle());
 
-  return group;
+  // West slab → WEST HINGE
+  {
+    const geo = new THREE.BoxGeometry(rafterLen, 0.08, L * 1.04);
+    geo.translate(rafterLen / 2, 0, 0);              // anchor at -X end
+    geo.translate(0, chordH + 0.08 / 2, 0);          // sit on top of rafter
+    const slab = new THREE.Mesh(geo, slabMat);
+    slab.position.set(0, chordH, 0);
+    slab.rotation.z = +rafterAngle;
+    slab.castShadow = slab.receiveShadow = true;
+    slab.name = 'roof_slab_west';
+    hingeWest.add(slab);
+  }
+
+  // East slab → EAST HINGE
+  {
+    const geo = new THREE.BoxGeometry(rafterLen, 0.08, L * 1.04);
+    geo.translate(rafterLen / 2, 0, 0);
+    geo.translate(0, chordH + 0.08 / 2, 0);
+    const slab = new THREE.Mesh(geo, slabMat);
+    slab.position.set(0, chordH, 0);
+    slab.rotation.z = Math.PI - rafterAngle;
+    slab.castShadow = slab.receiveShadow = true;
+    slab.name = 'roof_slab_east';
+    hingeEast.add(slab);
+  }
+
+  return root;
 }

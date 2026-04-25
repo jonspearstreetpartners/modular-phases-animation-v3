@@ -271,18 +271,32 @@ export function stageRoof(tl, refs, t0) {
     if (!roof) continue;
     tl.set(roof, { visible: true }, t0);
 
-    // Trusses are LOWERED into place (vertical descent, no rotation) per user
-    // request — like a crane setting them down. Pre-positioned 25 ft above the
-    // wall plate, then dropped with a gentle ease-out settle.
-    const trusses = roof.children;
-    trusses.forEach((t, i) => {
-      const restY = t.position.y;
-      tl.set(t.position, { y: restY + 25 }, t0);
-      tl.to(t.position, {
-        y: restY,
-        duration: 0.8,
-        ease: 'power2.out',
-      }, t0 + 0.2 + i * 0.15);
+    // v3 roof is split across 3 sub-groups (Roof_static + Roof_hinge_west +
+    // Roof_hinge_east). For the truss-drop animation we want individual truss
+    // members to drop, grouped by trussIndex so the chord, king-post, and the
+    // two rafters of one truss arrive together. Hinges themselves don't move
+    // here — only their CHILD positions (which are in hinge-local coords)
+    // animate, so the eave pivots stay put.
+    const byIndex = new Map();
+    roof.traverse((o) => {
+      const idx = o.userData?.trussIndex;
+      if (idx === undefined) return;
+      if (o.name && o.name.startsWith('roof_slab')) return;     // slabs handled in Stage 9
+      if (!byIndex.has(idx)) byIndex.set(idx, []);
+      byIndex.get(idx).push(o);
+    });
+
+    const indices = [...byIndex.keys()].sort((a, b) => a - b);
+    indices.forEach((idx, order) => {
+      const members = byIndex.get(idx);
+      members.forEach((mesh) => {
+        const restY = mesh.position.y;
+        tl.set(mesh.position,    { y: restY + 25 }, t0);
+        tl.set(mesh,             { visible: false }, t0);
+        tl.set(mesh,             { visible: true  }, t0 + 0.2 + order * 0.15);
+        tl.to (mesh.position,    { y: restY, duration: 0.8, ease: 'power2.out' },
+                                                       t0 + 0.2 + order * 0.15);
+      });
     });
   }
 }
@@ -376,57 +390,36 @@ export function stageExterior(tl, refs, t0) {
       });
     }
 
-    // 4) Roofing slab drops from above. The slab now lives inside the roof
-    //    hinge group (roof.js), so we look it up by name. Position values are
-    //    in hinge-relative coords but with hinge at rest rotation 0 the Y axis
-    //    aligns with world Y, so the drop animation behaves identically.
-    const slab = findByName(m, 'roof_slab');
-    if (slab) {
+    // 4) Roofing slabs drop from above. v3 has TWO slabs (one per pitch face),
+    //    each living inside its own hinge group. Find any descendant mesh whose
+    //    name starts with 'roof_slab' and animate them together.
+    const slabs = [];
+    m.traverse((o) => { if (o.name && o.name.startsWith('roof_slab')) slabs.push(o); });
+    slabs.forEach((slab, i) => {
       const restY = slab.position.y;
       tl.set(slab,          { visible: false                  }, t0);
       tl.set(slab.position, { y: restY + 25                   }, t0);
-      tl.set(slab,          { visible: true                   }, t0 + 3.5);
-      tl.to (slab.position, { y: restY, duration: 1.0, ease: 'power2.in' }, t0 + 3.5);
-    }
+      tl.set(slab,          { visible: true                   }, t0 + 3.5 + i * 0.1);
+      tl.to (slab.position, { y: restY, duration: 1.0, ease: 'power2.in' }, t0 + 3.5 + i * 0.1);
+    });
   }
 }
 
 // ============================================================================
-// STAGE 10 — Interior finish + module reveal + combine/separate (10 sec)
-//   1. Roof + roofing slabs lift up ("dollhouse open")
-//   2. Interior items stagger-reveal (kitchen, bath, bedroom, living, flooring)
-//   3. Modules SLIDE TOGETHER at the marriage line (combined home demo, ~1.4s)
-//   4. Hold combined briefly while interior is still visible
-//   5. Modules SLIDE APART again — final transport-ready state
-//   6. Roof returns over the separated modules (final shipping configuration)
-//   7. Final hold
-// (Modules sit with MODULE_GAP between them during ALL prior stages.)
+// STAGE 10 — Interior finish (v3)
+//   * Stagger-reveal interior items.
+//   * NO roof lift — the lower module is open-topped (no roof) and lifting the
+//     upper module's roof would just expose the inside of the lower module
+//     through it. Interior reveals fine under the existing roof; user can see
+//     into the upper through windows / open doorways.
+//   * NO combine/separate — modules stay in their factory positions; stacking
+//     happens at the site stage (added in a later commit).
 // ============================================================================
-import { COMBINE_OFFSET, MODULE } from '../utils/dimensions.js';
+import { MODULE } from '../utils/dimensions.js';
 
 export function stageInteriorComplete(tl, refs, t0) {
   announce(tl, t0, 10, 'Interior finish');
 
-  // ---- 1) Lift the roof to "open" the modules; return AT END after the
-  //         combine/separate cycle so the roof closes over the final state.
-  const ROOF_LIFT  = 40;
-  const LIFT_AT    = t0 + 0.2;
-  const LIFT_DUR   = 1.6;
-  const RETURN_AT  = t0 + 7.5;          // moved later to accommodate combine + separate
-  const RETURN_DUR = 1.5;
-  // Roof_X now contains both trusses AND the shingle slab (inside the hinge
-  // group), so lifting Roof_X carries everything together. The old separate
-  // 'roofing' group in Exterior is empty now.
-  for (const m of [refs.moduleA, refs.moduleB]) {
-    const roofGroup = findByName(m, "Roof");
-    if (roofGroup) {
-      const restY = roofGroup.position.y;
-      tl.to(roofGroup.position, { y: restY + ROOF_LIFT, duration: LIFT_DUR,   ease: 'power2.inOut' }, LIFT_AT);
-      tl.to(roofGroup.position, { y: restY,             duration: RETURN_DUR, ease: 'power2.inOut' }, RETURN_AT);
-    }
-  }
-
-  // ---- 2) Reveal interior with staggered scale-up ----
   for (const m of [refs.moduleA, refs.moduleB]) {
     const inter = findByName(m, 'Interior');
     if (!inter) continue;
@@ -438,29 +431,9 @@ export function stageInteriorComplete(tl, refs, t0) {
         x: 1, y: 1, z: 1,
         duration: 0.55,
         ease: 'back.out(1.4)',
-      }, t0 + 0.7 + i * 0.06);
+      }, t0 + 0.5 + i * 0.06);
     });
   }
-
-  // ---- 3+4+5) Combine → hold → separate ----
-  // Modules are in their REST (separated) state at the start of stage 10. Slide
-  // each toward the marriage line by COMBINE_OFFSET (= MODULE_GAP / 2), hold for
-  // ~0.9s with the open roof showing the combined interior, then slide back.
-  const moduleA = refs.moduleA;
-  const moduleB = refs.moduleB;
-  const restAX  = moduleA.position.x;
-  const restBX  = moduleB.position.x;
-
-  const COMBINE_AT  = t0 + 3.5;
-  const COMBINE_DUR = 1.4;
-  const SEPARATE_AT  = t0 + 5.8;       // 0.9s hold combined
-  const SEPARATE_DUR = 1.4;
-
-  tl.to(moduleA.position, { x: restAX + COMBINE_OFFSET, duration: COMBINE_DUR, ease: 'power2.inOut' }, COMBINE_AT);
-  tl.to(moduleB.position, { x: restBX - COMBINE_OFFSET, duration: COMBINE_DUR, ease: 'power2.inOut' }, COMBINE_AT);
-
-  tl.to(moduleA.position, { x: restAX, duration: SEPARATE_DUR, ease: 'power2.inOut' }, SEPARATE_AT);
-  tl.to(moduleB.position, { x: restBX, duration: SEPARATE_DUR, ease: 'power2.inOut' }, SEPARATE_AT);
 }
 
 // ============================================================================
@@ -473,20 +446,25 @@ export function stageInteriorComplete(tl, refs, t0) {
 export function stageTransport(tl, refs, t0) {
   announce(tl, t0, 11, 'Transport');
 
-  const PITCH_ANGLE = Math.atan(MODULE.roofPitch);  // matches the rafter slope
-
-  // ---- 1) Hinge roofs lower (0.0 → 1.8s) ----
-  // Module A's hinge sign is -1 (rotates negative to lower); Module B's is +1.
-  // Final rotation = hingeSign * PITCH_ANGLE, lowering the high end to flat.
+  // ---- 1) Fold rafter hinges DOWN inward (0.0 → 1.8s) ----
+  // v3 roof: TWO hinges per module roof (Roof_hinge_west and Roof_hinge_east),
+  // each carrying one rafter per truss + one shingle slab. Folding rotates
+  // each hinge around its eave pivot so the rafter+slab swings inward and
+  // lays flat onto the static bottom chords. Each hinge has userData.foldSign
+  // (-1 for west, +1 for east) and userData.foldAngle (the rafter slope).
+  // foldSign × foldAngle gives the rotation.z that brings the rafter to
+  // horizontal pointing inward.
   for (const m of [refs.moduleA, refs.moduleB]) {
-    const hinge = findByName(m, "Roof_hinge");
-    if (!hinge) continue;
-    const finalAngle = hinge.userData.hingeSign * PITCH_ANGLE;
-    tl.to(hinge.rotation, {
-      z: finalAngle,
-      duration: 1.6,
-      ease: 'power2.inOut',
-    }, t0 + 0.2);
+    for (const hingeName of ['Roof_hinge_west', 'Roof_hinge_east']) {
+      const hinge = findByName(m, hingeName);
+      if (!hinge) continue;
+      const finalZ = hinge.userData.foldSign * hinge.userData.foldAngle;
+      tl.to(hinge.rotation, {
+        z: finalZ,
+        duration: 1.6,
+        ease: 'power2.inOut',
+      }, t0 + 0.2);
+    }
   }
 
   // ---- 2) Trucks slide in from +Z (2.0 → 3.7s) ----
