@@ -28,27 +28,14 @@ export function buildModuleFloorFrame() {
 
   const W = MODULE.width;
   const L = MODULE.length;
-  const cbW = MODULE.carrierBeamWidth;
-  const cbH = MODULE.carrierBeamHeight;
   const rjW = MODULE.rimJoistWidth;
   const rjH = MODULE.rimJoistHeight;
   const jW  = MODULE.joistWidth;
   const jH  = MODULE.joistHeight;
   const jSp = MODULE.joistSpacing;
 
-  // --- Carrier beams (2, parallel to length axis, inset from outer walls) ---
-  const beamCenterY = -cbH / 2; // sits with its top just below y=0
-  for (const sign of [-1, 1]) {
-    const beam = new THREE.Mesh(
-      new THREE.BoxGeometry(cbW, cbH, L + 2),  // overhang at both ends, transport-style
-      steelMat(),
-    );
-    beam.position.set(sign * (W / 2 - MODULE.carrierBeamInset), beamCenterY, 0);
-    beam.castShadow = true;
-    beam.receiveShadow = true;
-    beam.name = `carrier_${sign > 0 ? 'east' : 'west'}`;
-    group.add(beam);
-  }
+  // (v3: steel carrier beams under the floor frame removed per user request.
+  //  The wood floor frame is the entire foundation now.)
 
   // --- Rim joists (perimeter rectangle, top at y = jH) ---
   const rimY = jH / 2;

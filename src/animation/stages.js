@@ -46,15 +46,7 @@ export function stageFloor(tl, refs, t0) {
     // Show the frame group (children control their own visibility for staging)
     tl.set(frame, { visible: true }, t0);
 
-    // Carrier beams: slide UP from below the camera frame (Y -20 → original)
-    const beams = findByPrefix(frame, 'carrier_');
-    beams.forEach((b, i) => {
-      tl.from(b.position, {
-        y: b.position.y - 20,
-        duration: 0.7,
-        ease: 'power2.out',
-      }, t0 + i * 0.05);
-    });
+    // (v3: carrier beams removed — no more steel chassis under the floor.)
 
     // Rim joists: drop in from above
     const rims = findByPrefix(frame, 'rim_');
