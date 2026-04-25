@@ -22,6 +22,9 @@ import { buildModuleInsulation } from './modules/insulation.js';
 import { buildModuleExterior } from './modules/exterior.js';
 import { buildModuleInterior } from './modules/interior.js';
 import { buildTruckAndTrailer } from './modules/truck.js';
+import { buildFoundation } from './modules/foundation.js';
+import { buildCrane, updateCraneCables } from './modules/crane.js';
+import { buildPorch } from './modules/porch.js';
 
 import { buildTimeline, STAGE_TIMES } from './animation/timeline.js';
 
@@ -97,6 +100,24 @@ truckUpper.position.set(MODULE_UPPER.factoryX, 0, 0);
 truckUpper.visible = false;
 scene.add(truckUpper);
 
+// ---------- Build site assets (Stage 12 — stacking) ----------
+const foundation = buildFoundation();
+foundation.position.set(0, 0, 0);
+foundation.visible = false;
+scene.add(foundation);
+
+const crane = buildCrane();
+crane.position.set(-22, 0, 0);    // initial rest position; Stage 12 moves it in from -X
+crane.visible = false;
+scene.add(crane);
+
+const porch = buildPorch();
+// Porch sits at the LOWER module's final stacked location: world (0, FOUNDATION_TOP, 0).
+// Stage 12 reveals it after stacking is complete.
+porch.position.set(0, 0.8, 0);
+porch.visible = false;
+scene.add(porch);
+
 // ---------- Hide all stage geometry at startup ----------
 // Stages set things visible at their start time. Stage 1 (FloorFrame) needs to be
 // visible at t=0 so we hide everything except FloorFrame.
@@ -141,6 +162,8 @@ const refs = {
   // Compat aliases for v1 stage code
   moduleA: moduleLower, moduleB: moduleUpper,
   truckA:  truckLower,  truckB:  truckUpper,
+  // v3 site stage assets
+  foundation, crane, porch,
   camera,
   renderer,
 };
@@ -230,6 +253,7 @@ const STAGE_CHIPS = [
   { time: STAGE_TIMES.s9,  num: 9,  label: 'Exterior' },
   { time: STAGE_TIMES.s10, num: 10, label: 'Interior' },
   { time: STAGE_TIMES.s11, num: 11, label: 'Transport' },
+  { time: STAGE_TIMES.s12, num: 12, label: 'Site Assembly' },
 ];
 
 // Build chip buttons. Each click pauses and seeks to that stage's start time.
@@ -535,6 +559,9 @@ window.addEventListener('resize', () => {
 // ---------- Render loop ----------
 function tick() {
   if (controls) controls.update();
+  // v3: keep crane lift cables stretched to the boom tip every frame while
+  // the hook is animating. updateCraneCables is a no-op when crane is hidden.
+  updateCraneCables(crane);
   renderer.render(scene, camera);
   updateTimeUI();
   setBtnLabel();

@@ -21,7 +21,7 @@ import gsap from 'gsap';
 import {
   stageFloor, stageFloorMEP, stageSubfloor, stageMEPStubs, stageWalls,
   stageMEPRoughIn, stageInsulationDrywall, stageRoof,
-  stageExterior, stageInteriorComplete, stageTransport,
+  stageExterior, stageInteriorComplete, stageTransport, stageSiteStacking,
 } from './stages.js';
 import { buildCameraAnimation } from './camera.js';
 
@@ -37,7 +37,8 @@ export const STAGE_TIMES = {
   s9: 37.0,
   s10: 42.0,
   s11: 47.0,    // v3: shortened Stage 10 from 10s -> 5s (no roof lift, no combine/separate)
-  end: 57.0,    // total runtime drops 5s accordingly
+  s12: 57.0,    // v3: site stacking + porch (~21s)
+  end: 78.0,
 };
 
 export function buildTimeline(refs, { paused = true } = {}) {
@@ -54,6 +55,7 @@ export function buildTimeline(refs, { paused = true } = {}) {
   stageExterior(          tl, refs, STAGE_TIMES.s9);
   stageInteriorComplete(  tl, refs, STAGE_TIMES.s10);
   stageTransport(         tl, refs, STAGE_TIMES.s11);
+  stageSiteStacking(      tl, refs, STAGE_TIMES.s12);
 
   // Phase 4 — camera choreography (orbit + push-in + pull-back) registered last
   // so its tweens layer on top of the geometry timeline.
