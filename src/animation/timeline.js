@@ -1,21 +1,19 @@
 // Master timeline composer. Calls each stage function with its start time.
 //
-// Stage order (11 stages, ~62 sec total):
-//   1. Floor system & module base       (0.0 → 5.5)
-//   2. Floor MEP rough-in               (5.5 → 9.0)
-//   3. Subfloor deck                    (9.0 → 12.0)
-//   4. Subfloor MEP & fixtures          (12.0 → 16.0)
-//   5. Wall framing (HERO)              (16.0 → 22.5)   [partition + exterior with drywall pre-installed]
-//   6. MEP rough-in (in-wall)           (22.5 → 27.5)
-//   7. Insulation                       (27.5 → 31.5)
-//   8. Roof framing                     (31.5 → 37.0)
-//   9. Windows, exterior finish & roof  (37.0 → 42.0)
-//  10. Interior reveal + combine/separate (42.0 → 52.0)
-//  11. Transport: hinge roofs + trucks   (52.0 → 62.0)  [roofs lower, trucks haul away]
-//
-// Modules are SEPARATED throughout (built/transported separately).
-// Stage 10 briefly slides them together for the combined-home demo.
-// Stage 11 lowers the hinged roofs flat for transport, then trucks pull modules away.
+// v3 timeline order (~76.5 s total, includes intro):
+//   0. Intro overlay                      (0.0 → 2.5)   large logo shrinks to top-right
+//   1. Floor system & module base         (2.5 → 8.0)
+//   2. Floor MEP rough-in                 (8.0 → 11.5)
+//   3. Subfloor deck                      (11.5 → 14.5)
+//   4. Subfloor MEP & fixtures            (14.5 → 18.5)
+//   5. Wall framing (HERO)                (18.5 → 25.0)
+//   6. MEP rough-in (in-wall)             (25.0 → 30.0)
+//   7. Insulation                         (30.0 → 34.0)
+//   8. Roof framing                       (34.0 → 39.5)
+//   9. Windows, exterior finish & roof    (39.5 → 44.5)
+//  10. Interior reveal                    (44.5 → 49.5)
+//  11. Transport (compressed)             (49.5 → 55.5)
+//  12. Site stacking + porch              (55.5 → 76.5)
 
 import gsap from 'gsap';
 import {
@@ -25,24 +23,86 @@ import {
 } from './stages.js';
 import { buildCameraAnimation } from './camera.js';
 
+// All construction stages shift right by INTRO_DURATION so the intro plays first.
+export const INTRO_DURATION = 2.5;
+
 export const STAGE_TIMES = {
-  s1:  0.0,
-  s2:  5.5,
-  s3:  9.0,
-  s4: 12.0,
-  s5: 16.0,
-  s6: 22.5,
-  s7: 27.5,
-  s8: 31.5,
-  s9: 37.0,
-  s10: 42.0,
-  s11: 47.0,    // v3: shortened Stage 10 from 10s -> 5s (no roof lift, no combine/separate)
-  s12: 53.0,    // v3: Stage 11 transport sped up from 10s -> 6s
-  end: 74.0,
+  s1:  INTRO_DURATION + 0.0,
+  s2:  INTRO_DURATION + 5.5,
+  s3:  INTRO_DURATION + 9.0,
+  s4:  INTRO_DURATION + 12.0,
+  s5:  INTRO_DURATION + 16.0,
+  s6:  INTRO_DURATION + 22.5,
+  s7:  INTRO_DURATION + 27.5,
+  s8:  INTRO_DURATION + 31.5,
+  s9:  INTRO_DURATION + 37.0,
+  s10: INTRO_DURATION + 42.0,
+  s11: INTRO_DURATION + 47.0,
+  s12: INTRO_DURATION + 53.0,
+  end: INTRO_DURATION + 74.0,
 };
+
+/**
+ * Intro animation (0 → INTRO_DURATION):
+ *   - 0.0 → 0.4  Large centered logo fades in at full size
+ *   - 0.4 → 1.4  Hold (read the brand)
+ *   - 1.4 → 2.3  Logo shrinks + translates to brand-tag's corner position
+ *                while the persistent #brand-tag fades in beneath/behind.
+ *   - 2.3 → 2.5  Intro overlay fades out, brand-tag is fully revealed.
+ *
+ * The transform-origin trick: GSAP animates xPercent/yPercent + scale on the
+ * #intro-logo div whose CSS rest position is `top: 50%; left: 50%` with a
+ * `translate(-50%, -50%)` baseline. We override transform during the tween
+ * to slide it to the brand-tag corner (top-right) and shrink to ~0.23x
+ * (matching the corner logo's size relative to the centered one).
+ */
+function buildIntro(tl) {
+  // Initial state: visible, full size, centered.
+  tl.set('#intro-logo', { opacity: 0 }, 0);
+  tl.set('#brand-tag',  { opacity: 0 }, 0);
+
+  // Fade in centered logo
+  tl.to('#intro-logo', {
+    opacity: 1,
+    duration: 0.4,
+    ease: 'power2.out',
+  }, 0.0);
+
+  // Hold (intentional empty time — keeps timeline aligned)
+
+  // Shrink + move to top-right corner. Computed in CSS pixels:
+  //   - Initial transform: translate(-50%, -50%) at top:50% left:50%
+  //   - Target: top:20px right:20px (brand-tag's position)
+  //   - We slide via x / y in CSS pixel offsets relative to the centered start
+  //
+  // Since the viewport size is unknown at module load, we use a function-based
+  // tween value that reads window.innerWidth/Height each frame.
+  tl.to('#intro-logo', {
+    duration: 0.9,
+    ease: 'power2.inOut',
+    scale: 0.23,
+    x: () => (window.innerWidth  / 2 - 20 - 84 / 2),   // half-width minus right margin minus half corner-logo width
+    y: () => -(window.innerHeight / 2 - 20 - 84 / 2),  // negative = up
+  }, 1.4);
+
+  // Fade out the intro overlay just before stage 1 starts; brand-tag fades in.
+  tl.to('#intro-logo', {
+    opacity: 0,
+    duration: 0.2,
+    ease: 'power2.out',
+  }, 2.3);
+  tl.to('#brand-tag', {
+    opacity: 1,
+    duration: 0.4,
+    ease: 'power2.out',
+  }, 2.1);
+}
 
 export function buildTimeline(refs, { paused = true } = {}) {
   const tl = gsap.timeline({ paused, defaults: { overwrite: 'auto' } });
+
+  // Intro overlay (0 → INTRO_DURATION)
+  buildIntro(tl);
 
   stageFloor(             tl, refs, STAGE_TIMES.s1);
   stageFloorMEP(          tl, refs, STAGE_TIMES.s2);
@@ -57,11 +117,10 @@ export function buildTimeline(refs, { paused = true } = {}) {
   stageTransport(         tl, refs, STAGE_TIMES.s11);
   stageSiteStacking(      tl, refs, STAGE_TIMES.s12);
 
-  // Phase 4 — camera choreography (orbit + push-in + pull-back) registered last
-  // so its tweens layer on top of the geometry timeline.
-  if (refs.camera) buildCameraAnimation(tl, refs.camera, refs.renderer);
+  // Camera choreography offset by INTRO_DURATION so its tween times align
+  // with the construction stages (camera was authored against t=0 = stage 1).
+  if (refs.camera) buildCameraAnimation(tl, refs.camera, refs.renderer, INTRO_DURATION);
 
-  // Hold a beat at the end
   tl.to({}, { duration: 1.5 }, STAGE_TIMES.end);
 
   return tl;

@@ -291,6 +291,17 @@ export function stageRoof(tl, refs, t0) {
                                                        t0 + 0.2 + order * 0.15);
       });
     });
+
+    // Reveal the gable-end siding fills AFTER the last truss has dropped, so
+    // the empty triangles aren't visible during the truss reveal sequence.
+    const lastIdx = Math.max(0, indices.length - 1);
+    const gableRevealAt = t0 + 0.2 + lastIdx * 0.15 + 0.7;
+    m.traverse((o) => {
+      if (o.name && o.name.startsWith('gable_')) {
+        tl.set(o, { visible: false }, t0);
+        tl.set(o, { visible: true },  gableRevealAt);
+      }
+    });
   }
 }
 

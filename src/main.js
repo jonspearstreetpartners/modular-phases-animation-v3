@@ -123,24 +123,23 @@ scene.add(porch);
 
 
 // ---------- Hide all stage geometry at startup ----------
-// Stages set things visible at their start time. Stage 1 (FloorFrame) needs to be
-// visible at t=0 so we hide everything except FloorFrame.
+// In v3 we hide EVERYTHING (including FloorFrame) so the scene is empty
+// during the intro overlay. Stage 1 (stageFloor) sets FloorFrame visible
+// at the timeline's INTRO_DURATION mark.
 const STAGE_GROUP_NAMES = [
-  'FloorFrame',          // Stage 1 — kept visible from t=0
-  'MEP_FloorRough',      // Stage 2 (new)
+  'FloorFrame',          // Stage 1
+  'MEP_FloorRough',      // Stage 2
   'Subfloor',            // Stage 3
   'MEP_Stubs',           // Stage 4
   'Walls',               // Stage 5
   'MEP_RoughIn',         // Stage 6
   'Insulation',          // Stage 7
-  // Roof_A / Roof_B are side-specific (handled below) — Stage 8
   'Exterior',            // Stage 9
   'Interior',            // Stage 10
 ];
 
 for (const m of [moduleLower, moduleUpper]) {
   for (const name of STAGE_GROUP_NAMES) {
-    if (name === 'FloorFrame') continue;        // visible from t=0
     const g = m.getObjectByName(name);
     if (g) g.visible = false;
   }
@@ -199,9 +198,15 @@ showStage();
 // canvas, set every near-white pixel to alpha=0, and swap the img.src for
 // the resulting data URL. The PNG ends up genuinely transparent — works
 // on every browser, no blend-mode dependency.
-(function transparentizeLogo() {
-  const img = document.querySelector('#brand-tag img');
-  if (!img) return;
+(function transparentizeLogos() {
+  const imgs = [
+    document.querySelector('#brand-tag img'),
+    document.querySelector('#intro-logo img'),
+  ].filter(Boolean);
+  if (imgs.length === 0) return;
+
+  // Process the source PNG once into a transparent data URL, then assign to
+  // every <img> that needs it.
   const loader = new Image();
   loader.crossOrigin = 'anonymous';
   loader.onload = () => {
@@ -213,20 +218,19 @@ showStage();
       ctx.drawImage(loader, 0, 0);
       const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const px = data.data;
-      // Threshold: any pixel with all RGB ≥ 240 becomes transparent. This
-      // catches the white PNG background while preserving the navy logo art.
       for (let i = 0; i < px.length; i += 4) {
         if (px[i] > 240 && px[i + 1] > 240 && px[i + 2] > 240) {
           px[i + 3] = 0;
         }
       }
       ctx.putImageData(data, 0, 0);
-      img.src = canvas.toDataURL('image/png');
+      const url = canvas.toDataURL('image/png');
+      imgs.forEach((img) => { img.src = url; });
     } catch (e) {
       console.warn('Logo transparentize failed:', e);
     }
   };
-  loader.src = img.src;
+  loader.src = imgs[0].src;
 })();
 
 // ---------- UI: PLAY / RESET, scrubbable progress bar, stage chips ----------

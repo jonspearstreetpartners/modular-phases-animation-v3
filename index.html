@@ -59,6 +59,24 @@
         font-weight: 600;
       }
 
+      /* Intro logo overlay (Stage 0) — large centered logo at t=0,
+         shrinks + moves to top-right corner during the first 2.5s of
+         the master timeline, then is hidden in favor of #brand-tag. */
+      #intro-logo {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+        pointer-events: none;
+        z-index: 10;
+      }
+      #intro-logo img {
+        display: block;
+        height: 360px;          /* big and dominant at start */
+        width: auto;
+      }
+
       /* Brand tag (top-right) */
       #brand-tag {
         position: absolute;
@@ -352,6 +370,10 @@
         #stage-indicator { font-size: 12px; padding: 6px 10px; }
         #brand-tag img   { height: 40px; }
       }
+
+      /* Intro logo scales down on smaller screens so it fits in portrait */
+      @media (max-width: 768px) { #intro-logo img { height: 240px; } }
+      @media (max-width: 380px) { #intro-logo img { height: 160px; } }
     </style>
   </head>
   <body>
@@ -360,6 +382,11 @@
 
       <div id="stage-indicator">
         <span class="stage-num">Phase 1</span> · Scaffold
+      </div>
+
+      <!-- Intro: large centered logo at t=0, shrinks + moves to top-right -->
+      <div id="intro-logo">
+        <img src="/spear-partners-logo.png" alt="Spear Partners" />
       </div>
 
       <div id="brand-tag">

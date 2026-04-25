@@ -27,7 +27,7 @@ import { updateOrthoFrustum } from '../scene/camera.js';
  *                 window.innerWidth. Required for MP4 export at a target
  *                 resolution different from the visible window.
  */
-export function buildCameraAnimation(tl, camera, renderer = null) {
+export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0) {
   // Capture starting state (set by buildOrthoCamera in main.js)
   const startDistance = Math.sqrt(
     camera.position.x ** 2 + camera.position.z ** 2,
@@ -63,13 +63,16 @@ export function buildCameraAnimation(tl, camera, renderer = null) {
   };
 
   // Helper: register a tween that mutates proxy + reapplies to camera each frame.
+  // atTime values throughout this function are RELATIVE to construction-start
+  // (Stage 1). startTime is added so the camera moves stay aligned when an
+  // intro stage offsets all of construction by INTRO_DURATION.
   const move = (toState, atTime, duration, ease = 'sine.inOut') => {
     tl.to(proxy, {
       ...toState,
       duration,
       ease,
       onUpdate: applyProxy,
-    }, atTime);
+    }, startTime + atTime);
   };
 
   // Choreography

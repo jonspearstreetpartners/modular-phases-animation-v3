@@ -175,5 +175,33 @@ export function buildModuleRoof({ side = 'roof' } = {}) {
     hingeEast.add(slab);
   }
 
+  // --- GABLE-END WALLS (triangular fills closing off +Z and -Z gable ends) ---
+  // Without these, the front and back of the gable have empty triangles between
+  // the wall plate and the roof peak, exposing the interior. Built as
+  // ExtrudeGeometry from a 2D triangle, painted with the siding color so they
+  // read as continuous wall cladding. They live in their own group (always
+  // visible — not part of the truss-hide pass at end of Stage 9, and not
+  // part of the rafter hinges that fold during transport).
+  const gableMat = shared('gable_siding', () => matte(COLORS.siding, { roughness: 0.65 }));
+  const gables = new THREE.Group();
+  gables.name = 'Roof_gables';
+
+  const tri = new THREE.Shape();
+  tri.moveTo(-W / 2, 0);
+  tri.lineTo(+W / 2, 0);
+  tri.lineTo(0, rise);
+  tri.closePath();
+  const gableGeo = new THREE.ExtrudeGeometry(tri, { depth: 0.08, bevelEnabled: false });
+  gableGeo.translate(0, 0, -0.04);    // center the extrusion's depth on z=0
+
+  for (const sign of [-1, +1]) {
+    const fill = new THREE.Mesh(gableGeo.clone(), gableMat);
+    fill.position.set(0, y0 + chordH, sign * (L / 2));
+    fill.castShadow = fill.receiveShadow = true;
+    fill.name = `gable_${sign > 0 ? 'south' : 'north'}`;
+    gables.add(fill);
+  }
+  root.add(gables);
+
   return root;
 }
