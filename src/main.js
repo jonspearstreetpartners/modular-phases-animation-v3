@@ -61,7 +61,7 @@ const scene = new THREE.Scene();
 const camera = buildOrthoCamera(window.innerWidth, window.innerHeight, 70);
 
 // ---------- Lighting + ground ----------
-buildLighting(scene);
+const lights = buildLighting(scene);
 buildGround(scene);
 
 // ---------- Build both modules ----------
@@ -184,6 +184,7 @@ const refs = {
   // v3 site stage assets
   foundation, crane, porch, landscape,
   siteX: SITE_X,
+  lights,
   camera,
   renderer,
 };

@@ -122,38 +122,10 @@ export function buildTimeline(refs, { paused = true } = {}) {
 
   // Camera choreography offset by INTRO_DURATION so its tween times align
   // with the construction stages (camera was authored against t=0 = stage 1).
-  if (refs.camera) buildCameraAnimation(tl, refs.camera, refs.renderer, INTRO_DURATION);
+  if (refs.camera) buildCameraAnimation(tl, refs.camera, refs.renderer, INTRO_DURATION, refs.lights);
 
-  // ----- OUTRO LOGO REGROW -----
-  // After the porch reveal completes (~ s12 + 21 s) the intro logo grows
-  // back into the frame, slightly LEFT of center. Reuses the existing
-  // #intro-logo element which has been hidden since the intro ended.
-  // Reverses the intro's shrink-to-corner tween: scale back up to 1.0,
-  // slide back from the corner toward (-100, 0) in pixel offsets so it
-  // ends slightly left of center.
-  const outroAt = STAGE_TIMES.s12 + 22.0;
-  // First make the element visible from the corner-shrunk state it ended in
-  tl.set('#intro-logo', { opacity: 0 }, outroAt);
-  tl.to ('#intro-logo', {
-    opacity: 1,
-    duration: 0.4,
-    ease: 'power2.out',
-  }, outroAt);
-  tl.to ('#intro-logo', {
-    duration: 1.6,
-    ease: 'power2.inOut',
-    scale: 1.0,
-    // Pixel offset relative to the centered baseline (#intro-logo CSS:
-    // top: 50%; left: 50%; transform: translate(-50%, -50%)). The home
-    // is now shown FRONT-ON close-in at the center of the frame in the
-    // outro, so the logo must be pushed FAR left to clear it entirely.
-    // Land at ~38% of viewport width left of center, with an upper-bound
-    // (650 px) so it stays sane on ultra-wide displays. Slight upward
-    // offset (-10% of viewport height) puts it in the upper-left area,
-    // out of the way of any walkway / landscape detail at the bottom.
-    x: () => -Math.min(650, window.innerWidth * 0.38),
-    y: () => -Math.min(120, window.innerHeight * 0.10),
-  }, outroAt + 0.1);
+  // (Outro logo regrow removed per user request — the persistent top-right
+  //  brand-tag stays visible throughout, no separate logo flourish at end.)
 
   tl.to({}, { duration: 1.5 }, STAGE_TIMES.end);
 

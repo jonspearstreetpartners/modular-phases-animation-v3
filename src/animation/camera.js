@@ -27,7 +27,7 @@ import { updateOrthoFrustum } from '../scene/camera.js';
  *                 window.innerWidth. Required for MP4 export at a target
  *                 resolution different from the visible window.
  */
-export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0) {
+export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0, lights = null) {
   // Capture starting state (set by buildOrthoCamera in main.js)
   const startDistance = Math.sqrt(
     camera.position.x ** 2 + camera.position.z ** 2,
@@ -110,12 +110,6 @@ export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0)
   // 75 – 78: FRONT-ON CLOSE-IN SHOT of the assembled home at SITE_X = +30.
   // Lands at the end of Stage 12 (outro) so the porch reveal, landscape
   // grow, and outro logo all play against this close shot of the home.
-  // Camera looks straight at the +Z gable end (porch + door + front
-  // windows), with slight elevation showing the gable peak.
-  //   - centerX/centerZ swing the orbit pivot to (30, 0, 0)
-  //   - angle = π/2 puts camera at +Z relative to that pivot
-  //   - distance = 35 + frustumSize 35 = close, intimate framing
-  //   - elevation = 14 picks up both stories of the home
   move({
     centerX:     30,
     centerY:     10,
@@ -125,4 +119,13 @@ export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0)
     elevation:   14,
     frustumSize: 35,
   }, 75.0, 3.0, 'power2.inOut');
+
+  // Toggle the directional key light's shadow casting at the head-on shot.
+  // OFF at t=75 (start of head-on) so no hard shadow falls across the front
+  // gable. ON at t=0 so REPLAY restores shadows for the rest of the
+  // animation.
+  if (lights && lights.key) {
+    tl.call(() => { lights.key.castShadow = true;  }, null, startTime + 0.0);
+    tl.call(() => { lights.key.castShadow = false; }, null, startTime + 75.0);
+  }
 }
