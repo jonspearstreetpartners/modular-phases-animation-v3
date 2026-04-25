@@ -529,49 +529,60 @@ export function stageTransport(tl, refs, t0) {
 }
 
 // ============================================================================
-// STAGE 12 — Site stacking + porch (~21 sec)
-//   1. Trucks drive BACK into frame from -Z (with their module cargo)
-//   2. Foundation slab fades in at world (0, 0, 0)
-//   3. Boom-truck crane drives in from -X (offstage)
-//   4. Crane lifts LOWER module off its truck → translates → lowers onto
-//      foundation. Module centers at world (0, 0, 0).
-//   5. Crane lifts UPPER module off its truck → translates → lowers onto top
-//      of LOWER module. While being lowered, the rafter hinges UNFOLD back to
-//      gable position. Module's roof returns to full pitch by the time it lands.
-//   6. Trucks drive away in -Z (now empty)
-//   7. Crane drives away in -X
-//   8. Porch piece-by-piece stagger reveal: deck → columns → roof → railings →
-//      door → walkway
+// STAGE 12 — Site stacking + porch (~19 sec)
+//
+// Approach: modules are animated DIRECTLY in world space via tl.to on their
+// own .position. The crane's hook is animated separately to "track" the load
+// visually (cables stretch via the per-frame updateCraneCables). This avoids
+// the parent/attach() bugs in the previous version where reparenting modules
+// to the rotated hook caused teleports and frame-mismatched roof unfolds.
+//
+//   1) 0.0 → 3.0  Trucks + modules drive BACK from -Z to z=0 (factory X)
+//   2) 2.5 → 3.5  Foundation appears at SITE_X (right of factory positions)
+//   3) 3.0 → 5.0  TRUCKS drive away to -Z (modules are now sitting alone)
+//   4) 5.0 → 7.0  Crane drives in from far -X
+//   5) 7.0 → 11.0 Crane lifts LOWER module → translates EAST to SITE_X →
+//                 lowers onto foundation. Hook tracks module height.
+//   6) 11.0 → 14.5 Crane lifts UPPER module → translates west toward SITE_X →
+//                  lowers onto top of LOWER. Roof rafter hinges UNFOLD back
+//                  to 0 during the descent. Hook tracks.
+//   7) 14.5 → 16.5 Crane drives away in -X.
+//   8) 16.5 → 19.0 Porch reveal piece-by-piece at SITE_X.
 // ============================================================================
 export function stageSiteStacking(tl, refs, t0) {
   announce(tl, t0, 12, 'Site assembly');
 
-  // ----- Capture starting positions of trucks/modules from where Stage 11 left off
-  // Stage 11 drove them to z = -150 (off-screen south). Modules' x stays at the
-  // factory side-by-side positions (lower at -9.59, upper at +9.59).
-  const truckA = refs.truckA;
-  const truckB = refs.truckB;
-  const moduleA = refs.moduleA;
-  const moduleB = refs.moduleB;
+  const truckA  = refs.truckA;
+  const truckB  = refs.truckB;
+  const moduleA = refs.moduleA;     // lower
+  const moduleB = refs.moduleB;     // upper
+  const crane   = refs.crane;
+  const hook    = crane?.userData?.hook;
+  const SITE_X  = refs.siteX ?? 30;
 
-  // ===== STEP 1 (0.0 → 3.5s) — Trucks drive BACK into frame =====
-  // From z=-150 they drive forward (+Z) to the unloading positions at z=0.
-  // Lower truck on the WEST side of the site, upper truck on the EAST side.
-  // The lower module STAYS on its truck for this drive-in.
-  const TRUCK_RETURN_AT = t0;
-  const TRUCK_RETURN_DUR = 3.0;
-  for (const truck of [truckA, truckB]) {
-    if (truck) {
-      tl.to(truck.position, { z: 0, duration: TRUCK_RETURN_DUR, ease: 'power2.out' }, TRUCK_RETURN_AT);
-    }
-  }
-  for (const m of [moduleA, moduleB]) {
-    if (m) {
-      tl.to(m.position, { z: 0, duration: TRUCK_RETURN_DUR, ease: 'power2.out' }, TRUCK_RETURN_AT);
-    }
+  // World-space references
+  const FOUNDATION_TOP = 0.8;
+  const LOWER_HEIGHT   =
+    MODULE.joistHeight + MODULE.subfloorThickness + MODULE.wallHeight + MODULE.ceilingThickness;
+  const STACK_Y        = FOUNDATION_TOP + LOWER_HEIGHT;
+  const TRUCK_BED_Y    = 3.0;       // approximate top of truck flatbed
+  const LIFT_HOVER     = 25;        // ft module sits above ground when cruising
+
+  // Hook position is in CRANE-local frame. With the crane parked at
+  // (SITE_X - 22, 0, 0), hook-local x maps to world via:
+  //   worldX = (SITE_X - 22) + hookLocalX
+  // The hook's rest-position y (its dangling height) is set in crane.js.
+  const restHookLocalX = hook ? hook.position.x : 0;
+  const restHookY      = hook ? hook.position.y : 0;
+  const worldToHookLocalX = (worldX) => worldX - (SITE_X - 22);
+
+  // ===== STEP 1 (0 → 3) — Trucks + modules drive back into frame =====
+  // From z=-150 (left over from Stage 11) up to z=0. They keep their factory X.
+  for (const obj of [truckA, truckB, moduleA, moduleB]) {
+    if (obj) tl.to(obj.position, { z: 0, duration: 3.0, ease: 'power2.out' }, t0);
   }
 
-  // ===== STEP 2 (2.5 → 3.5s) — Foundation appears =====
+  // ===== STEP 2 (2.5 → 3.3) — Foundation appears =====
   const foundation = refs.foundation;
   if (foundation) {
     tl.set(foundation, { visible: true }, t0 + 2.5);
@@ -581,214 +592,129 @@ export function stageSiteStacking(tl, refs, t0) {
     });
   }
 
-  // ===== STEP 3 (3.0 → 5.0s) — Crane drives in from -X =====
-  const crane = refs.crane;
+  // ===== STEP 3 (3.0 → 5.0) — Trucks drive AWAY =====
+  // Trucks pull out to -Z, leaving modules behind on the ground at their
+  // factory X positions. Modules' Y stays where it was (truck bed height),
+  // we'll lower them in the next step when they're picked up.
+  for (const truck of [truckA, truckB]) {
+    if (truck) tl.to(truck.position, { z: -200, duration: 2.0, ease: 'power1.in' }, t0 + 3.0);
+  }
+
+  // ===== STEP 4 (5.0 → 7.0) — Crane drives in from far -X =====
   if (crane) {
-    const CRANE_REST_X = -22;     // final position 22 ft west of site
-    tl.set(crane,          { visible: true }, t0 + 3.0);
-    tl.set(crane.position, { x: -80      }, t0 + 3.0);
-    tl.to (crane.position, { x: CRANE_REST_X, duration: 2.0, ease: 'power2.out' }, t0 + 3.0);
+    const CRANE_REST_X = SITE_X - 22;
+    tl.set(crane,          { visible: true }, t0 + 5.0);
+    tl.set(crane.position, { x: SITE_X - 80 }, t0 + 5.0);
+    tl.to (crane.position, { x: CRANE_REST_X, duration: 2.0, ease: 'power2.out' }, t0 + 5.0);
   }
 
-  // ===== STEP 4 (5.5 → 10.0s) — Crane lifts LOWER, places on foundation =====
-  // Choreography:
-  //   5.5 → 6.0: hook descends from rest to module top
-  //   6.0 → 6.3: "grab" (visual: just a tiny pause)
-  //   6.3 → 7.5: hook + module rise + translate east toward foundation
-  //   7.5 → 8.5: hook + module descend onto foundation
-  //   8.5 → 8.8: "release"
-  //   8.8 → 9.5: hook returns up
-  if (crane && moduleA) {
-    const hook = crane.userData.hook;
-    const restHookY = hook.position.y;     // dangle starting height (relative to crane group)
-
-    // Module's truck-bed Y in world is small (~3 ft). Foundation top Y is ~0.8 ft.
-    // We want the module to land with its floor frame bottom at foundation top.
-    // The lower module's local origin is at floor frame bottom (y=0 in module-local).
-    // So the FINAL world position of moduleA is (0, FOUNDATION_TOP, 0).
-    const FOUNDATION_TOP = 0.8;             // matches foundation thickness in foundation.js
-
-    // Compute hook Y values needed to hover the module above the truck (lift),
-    // above the foundation (cruise), and at the foundation (set-down).
-    // We're parenting the module under the hook for the lift, so we work in
-    // hook-local coordinates: when module is parented to hook with the right
-    // initial offset, raising hook.y raises the module accordingly.
-    //
-    // Approach: re-parent moduleA to hook, with a frame-correcting offset so
-    // the module visually stays in place at the moment of grab. From then on
-    // tween hook.position to drag the module along.
-
-    const truckBedY = 3.0;                  // approx truck flatbed top
-    const HOVER_Y   = truckBedY + 25;       // 25 ft above truck during cruise
-    const SETDOWN_Y = FOUNDATION_TOP + 20;  // hook Y when module is just resting on foundation
-
-    // Phase A: descend onto module (5.5 → 6.0) — hook lowers from rest dangle
-    // to a height just above the truck-loaded module.
-    const HOOK_LOAD_Y = truckBedY + 10;     // hook 10 ft above the loaded module top
-    tl.to(hook.position, { y: HOOK_LOAD_Y, duration: 0.5, ease: 'power2.in' }, t0 + 5.5);
-
-    // Phase B: grab moment — re-parent moduleA to hook with offset preserved.
-    // GSAP can't re-parent in a tween, so we use a callback at t = 6.0s.
-    tl.call(() => {
-      // Snapshot world position so we keep the module visually still
-      const wp = new THREE.Vector3();
-      moduleA.getWorldPosition(wp);
-      // Convert to hook's local frame
-      crane.userData.hook.attach(moduleA);
-      // (THREE's .attach() preserves world transform automatically.)
-    }, null, t0 + 6.0);
-
-    // Phase C: lift + translate east. Hook X moves from (boomTipX) toward 0
-    // — but we don't actually move hook.x; we move the entire crane group's
-    // boom is fixed. Simpler: we trans LATE the lower module via the CRANE'S
-    // truck driving rather than swinging the hook. Instead the easier
-    // approach: tween the HOOK in the WORLD frame using crane group offsets.
-    //
-    // Actually the cleanest model: leave hook.x at its rest value relative to
-    // crane (boom-tip-X), and instead translate the CRANE group to bring the
-    // hook over the foundation. crane.position.x goes from -22 (rest) to
-    // 0 - boomTipX (so hook ends up at world x=0). The boom's tip is at
-    // local x = ~28 (boomLen * cos(boomAngle)), so crane.position.x must end
-    // at -28 to put hook at world 0... but that's farther WEST than rest.
-    //
-    // Simpler: tween hook.x directly relative to crane (the boom is rigid in
-    // real life, but for animation purposes we'll cheat). We just move the
-    // hook eastward relative to crane to position it over the foundation.
-    const hookEastX = 22;        // hook moves east in crane-local to be over world x=0
-                                  // (since crane sits at world x=-22)
-
+  // Helper: animate the hook to a given WORLD x and a given y (in crane-local
+  // y, which equals world y because crane is on the ground at y=0).
+  const moveHook = (worldX, y, atTime, duration, ease = 'power2.inOut') => {
+    if (!hook) return;
     tl.to(hook.position, {
-      x: hookEastX, y: HOVER_Y,
-      duration: 1.2, ease: 'power2.inOut',
-    }, t0 + 6.3);
+      x: worldToHookLocalX(worldX),
+      y: y,
+      duration,
+      ease,
+    }, atTime);
+  };
 
-    // Phase D: lower onto foundation (7.5 → 8.5)
-    tl.to(hook.position, {
-      y: SETDOWN_Y,
-      duration: 1.0, ease: 'power2.in',
-    }, t0 + 7.5);
+  // ===== STEP 5 (7.0 → 11.0) — Crane picks up LOWER, places on foundation =====
+  // Lower module is currently at world (factoryLowerX, ~0, 0). We need it at
+  // (SITE_X, FOUNDATION_TOP, 0).
+  if (moduleA && hook) {
+    const lowerStartX = moduleA.position.x;
+    // moduleA was riding on the truck — y was ~0 (its modelled position; the
+    // truck sat below). Snap to ground level just to be safe.
 
-    // Phase E: release — re-parent module back to scene at world (0, 0.8, 0).
-    tl.call(() => {
-      refs.scene.attach(moduleA);
-      // Snap to exact target — small rotational/positional drift cleanup.
-      moduleA.position.set(0, FOUNDATION_TOP, 0);
-      moduleA.rotation.set(0, 0, 0);
-    }, null, t0 + 8.5);
+    // Phase A (7.0 → 8.0) — hook descends to module top while moving over module
+    moveHook(lowerStartX, 8, t0 + 7.0, 1.0);
 
-    // Phase F: hook returns up (8.8 → 9.5)
-    tl.to(hook.position, {
-      y: HOVER_Y,
-      duration: 0.7, ease: 'power2.out',
-    }, t0 + 8.8);
-  }
+    // Phase B (8.0 → 9.0) — module + hook rise straight up
+    tl.to(moduleA.position, {
+      y: LIFT_HOVER, duration: 1.0, ease: 'power2.out',
+    }, t0 + 8.0);
+    moveHook(lowerStartX, LIFT_HOVER + 8, t0 + 8.0, 1.0);
 
-  // ===== STEP 5 (10.0 → 15.0s) — Crane lifts UPPER, stacks on lower =====
-  // Same choreography as the lower-module lift, but the upper lands on TOP of
-  // the lower at y = FOUNDATION_TOP + lower module's full height. Plus: the
-  // rafter hinges UNFOLD during the lift so by the time the upper lands the
-  // roof is back in full gable shape.
-  if (crane && moduleB) {
-    const hook = crane.userData.hook;
-    const FOUNDATION_TOP = 0.8;
-    const lowerModuleHeight =
-      MODULE.joistHeight + MODULE.subfloorThickness + MODULE.wallHeight + MODULE.ceilingThickness;
-    const STACK_Y = FOUNDATION_TOP + lowerModuleHeight;
-    const HOVER_Y_UPPER = STACK_Y + 30;
-    const SETDOWN_Y_UPPER = STACK_Y + 20;
+    // Phase C (9.0 → 10.0) — module + hook translate east to SITE_X
+    tl.to(moduleA.position, {
+      x: SITE_X, duration: 1.0, ease: 'power2.inOut',
+    }, t0 + 9.0);
+    moveHook(SITE_X, LIFT_HOVER + 8, t0 + 9.0, 1.0);
 
-    // Move hook east toward the upper module's truck (still at factoryX = +9.59)
-    // but actually the truck drove back to z=0 with module on it at x=+9.59.
-    // The hook is currently at hookEastX (22 in crane-local = world 0). We
-    // need to move hook to be over the upper module: world x = +9.59 = crane-local x = 31.59.
-    const upperLoadX = 31.59;
-
-    // Phase A: hook moves over upper module + descends to load height
-    tl.to(hook.position, {
-      x: upperLoadX,
-      y: 13,    // truck bed (~3) + module height (~10) gives top of upper module ~13
-      duration: 0.6, ease: 'power2.inOut',
+    // Phase D (10.0 → 11.0) — module + hook descend onto foundation
+    tl.to(moduleA.position, {
+      y: FOUNDATION_TOP, duration: 1.0, ease: 'power2.in',
     }, t0 + 10.0);
+    moveHook(SITE_X, FOUNDATION_TOP + 8, t0 + 10.0, 1.0);
+  }
 
-    // Phase B: grab — reparent moduleB to hook
-    tl.call(() => {
-      crane.userData.hook.attach(moduleB);
-    }, null, t0 + 10.6);
+  // ===== STEP 6 (11.0 → 14.5) — Crane picks up UPPER, stacks on top =====
+  if (moduleB && hook) {
+    const upperStartX = moduleB.position.x;
 
-    // Phase C: lift + translate west to be over the foundation
-    tl.to(hook.position, {
-      x: 22, y: HOVER_Y_UPPER,
-      duration: 1.5, ease: 'power2.inOut',
-    }, t0 + 10.9);
+    // Phase A (11.0 → 12.0) — hook releases lower, slides over upper module
+    moveHook(upperStartX, 13, t0 + 11.0, 1.0);
 
-    // Phase D: while approaching the stack, UNFOLD the rafter hinges back to 0.
-    // (The hinges are in moduleB's hierarchy — they animate fine even while
-    // moduleB is parented to the hook.)
+    // Phase B (12.0 → 13.0) — upper rises straight up + hook tracks
+    tl.to(moduleB.position, {
+      y: STACK_Y + LIFT_HOVER, duration: 1.0, ease: 'power2.out',
+    }, t0 + 12.0);
+    moveHook(upperStartX, STACK_Y + LIFT_HOVER + 8, t0 + 12.0, 1.0);
+
+    // Phase C (13.0 → 14.0) — upper translates west to SITE_X (over lower module).
+    // ALSO start unfolding the rafter hinges. Module is animating in world
+    // space directly, hinges are children of the module in module-local
+    // coords — rotation works cleanly.
+    tl.to(moduleB.position, {
+      x: SITE_X, duration: 1.0, ease: 'power2.inOut',
+    }, t0 + 13.0);
+    moveHook(SITE_X, STACK_Y + LIFT_HOVER + 8, t0 + 13.0, 1.0);
+
     moduleB.traverse((o) => {
       if (o.name === 'Roof_hinge_west' || o.name === 'Roof_hinge_east') {
         tl.to(o.rotation, {
           z: 0, duration: 1.5, ease: 'power2.inOut',
-        }, t0 + 10.9);
+        }, t0 + 13.0);
       }
     });
-    // Restore the static framing visibility (it was hidden in Stage 9 — but
-    // since the lift is showing the assembled home arriving, we DON'T need to
-    // re-show framing; shingles are still visible and that's the finished look).
 
-    // Phase E: lower onto top of lower module
-    tl.to(hook.position, {
-      y: SETDOWN_Y_UPPER,
-      duration: 1.2, ease: 'power2.in',
-    }, t0 + 12.4);
-
-    // Phase F: release — re-parent upper module back to scene at stacked position
-    tl.call(() => {
-      refs.scene.attach(moduleB);
-      moduleB.position.set(0, STACK_Y, 0);
-      moduleB.rotation.set(0, 0, 0);
-    }, null, t0 + 13.6);
-
-    // Phase G: hook returns up
-    tl.to(hook.position, {
-      y: HOVER_Y_UPPER + 5,
-      duration: 0.8, ease: 'power2.out',
-    }, t0 + 13.9);
+    // Phase D (14.0 → 14.5) — upper descends onto stacked position
+    tl.to(moduleB.position, {
+      y: STACK_Y, duration: 0.8, ease: 'power2.in',
+    }, t0 + 14.0);
+    moveHook(SITE_X, STACK_Y + 8, t0 + 14.0, 0.8);
   }
 
-  // ===== STEP 6 (15.0 → 17.0s) — Trucks drive away (now empty) =====
-  // Trucks return to -Z, leaving the empty trailers behind them.
-  const TRUCK_AWAY_AT = t0 + 15.0;
-  const TRUCK_AWAY_DUR = 2.0;
-  for (const t of [truckA, truckB]) {
-    if (t) tl.to(t.position, { z: -150, duration: TRUCK_AWAY_DUR, ease: 'power1.in' }, TRUCK_AWAY_AT);
-  }
-
-  // ===== STEP 7 (15.5 → 17.5s) — Crane drives away in -X =====
+  // ===== STEP 7 (14.5 → 16.5) — Crane drives away in -X =====
   if (crane) {
-    tl.to(crane.position, { x: -100, duration: 2.0, ease: 'power1.in' }, t0 + 15.5);
+    // First retract the hook to a safe position so cables don't drag through
+    // the freshly stacked home as the crane backs up.
+    moveHook(SITE_X, 35, t0 + 14.5, 0.5);
+    tl.to(crane.position, { x: SITE_X - 100, duration: 2.0, ease: 'power1.in' }, t0 + 15.0);
   }
 
-  // ===== STEP 8 (17.5 → 20.5s) — Porch assembles piece-by-piece =====
+  // ===== STEP 8 (16.5 → 19.0) — Porch reveal piece-by-piece =====
   const porch = refs.porch;
   if (porch) {
-    tl.set(porch, { visible: true }, t0 + 17.5);
-    // Group children by assemblyOrder; reveal each tier with a stagger.
-    const tiers = new Map();   // order -> [meshes]
+    tl.set(porch, { visible: true }, t0 + 16.5);
+    const tiers = new Map();
     porch.traverse((o) => {
       const idx = o.userData?.assemblyOrder;
       if (idx === undefined) return;
       if (!tiers.has(idx)) tiers.set(idx, []);
       tiers.get(idx).push(o);
     });
-    const sortedOrders = [...tiers.keys()].sort((a, b) => a - b);
-    sortedOrders.forEach((order, i) => {
-      const meshes = tiers.get(order);
+    const orders = [...tiers.keys()].sort((a, b) => a - b);
+    orders.forEach((ord, i) => {
+      const meshes = tiers.get(ord);
       meshes.forEach((mesh) => {
-        tl.set(mesh.scale, { x: 0.001, y: 0.001, z: 0.001 }, t0 + 17.5);
+        tl.set(mesh.scale, { x: 0.001, y: 0.001, z: 0.001 }, t0 + 16.5);
         tl.to (mesh.scale, {
           x: 1, y: 1, z: 1,
           duration: 0.45, ease: 'back.out(1.4)',
-        }, t0 + 17.5 + i * 0.4);
+        }, t0 + 16.5 + i * 0.35);
       });
     });
   }

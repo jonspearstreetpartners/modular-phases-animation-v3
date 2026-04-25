@@ -101,22 +101,26 @@ truckUpper.visible = false;
 scene.add(truckUpper);
 
 // ---------- Build site assets (Stage 12 — stacking) ----------
+// v3: foundation sits to the RIGHT of both factory module positions.
+// Lower module factory X = -9.59, upper factory X = +9.59. Foundation lives
+// at x=+30 so it reads as "across from where the modules were built."
+const SITE_X = 30;
+
 const foundation = buildFoundation();
-foundation.position.set(0, 0, 0);
+foundation.position.set(SITE_X, 0, 0);
 foundation.visible = false;
 scene.add(foundation);
 
 const crane = buildCrane();
-crane.position.set(-22, 0, 0);    // initial rest position; Stage 12 moves it in from -X
+crane.position.set(SITE_X - 22, 0, 0);    // 22 ft west of site, rest position
 crane.visible = false;
 scene.add(crane);
 
 const porch = buildPorch();
-// Porch sits at the LOWER module's final stacked location: world (0, FOUNDATION_TOP, 0).
-// Stage 12 reveals it after stacking is complete.
-porch.position.set(0, 0.8, 0);
+porch.position.set(SITE_X, 0.8, 0);       // sits at the stacked home's location
 porch.visible = false;
 scene.add(porch);
+
 
 // ---------- Hide all stage geometry at startup ----------
 // Stages set things visible at their start time. Stage 1 (FloorFrame) needs to be
@@ -164,6 +168,7 @@ const refs = {
   truckA:  truckLower,  truckB:  truckUpper,
   // v3 site stage assets
   foundation, crane, porch,
+  siteX: SITE_X,
   camera,
   renderer,
 };
