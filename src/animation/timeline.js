@@ -143,14 +143,16 @@ export function buildTimeline(refs, { paused = true } = {}) {
     duration: 1.6,
     ease: 'power2.inOut',
     scale: 1.0,
-    // Pixel offset relative to the centered baseline (the CSS rule sets
-    // top: 50%; left: 50%; transform: translate(-50%, -50%); so x is a
-    // pixel delta from that center). Going far left so the big logo clears
-    // the assembled home which sits at the right side of the camera frame
-    // (SITE_X = +30 in world space). Falls back to a smaller offset on
-    // very narrow screens so the logo doesn't slide off the left edge.
-    x: () => -Math.min(380, window.innerWidth * 0.28),
-    y: 0,
+    // Pixel offset relative to the centered baseline (#intro-logo CSS:
+    // top: 50%; left: 50%; transform: translate(-50%, -50%)). The home
+    // is now shown FRONT-ON close-in at the center of the frame in the
+    // outro, so the logo must be pushed FAR left to clear it entirely.
+    // Land at ~38% of viewport width left of center, with an upper-bound
+    // (650 px) so it stays sane on ultra-wide displays. Slight upward
+    // offset (-10% of viewport height) puts it in the upper-left area,
+    // out of the way of any walkway / landscape detail at the bottom.
+    x: () => -Math.min(650, window.innerWidth * 0.38),
+    y: () => -Math.min(120, window.innerHeight * 0.10),
   }, outroAt + 0.1);
 
   tl.to({}, { duration: 1.5 }, STAGE_TIMES.end);
