@@ -12,15 +12,17 @@ export function matte(colorHex, overrides = {}) {
   });
 }
 
-// Glass for windows (later stages)
+// Glass for windows. v3: dark, near-black panes per the Champion rendering.
+// transmission/opacity dropped so the dark color reads; slight metalness adds
+// the subtle reflection sheen visible on the rendering's panes.
 export function glass(colorHex = COLORS.windowGlass) {
   return new THREE.MeshPhysicalMaterial({
     color: new THREE.Color(colorHex),
-    transmission: 0.6,
-    opacity: 0.4,
-    transparent: true,
-    roughness: 0.05,
-    metalness: 0.0,
+    transmission: 0.0,
+    opacity: 1.0,
+    transparent: false,
+    roughness: 0.15,
+    metalness: 0.5,
   });
 }
 

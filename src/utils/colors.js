@@ -23,12 +23,13 @@ export const COLORS = {
   insulation:      '#F5D580',
   drywall:         '#F2EFE8',
 
-  // Exterior
-  housewrap:       '#E8EDF2',
-  siding:          '#E5E0D5',
-  roofShingle:     '#5A5A56',
-  windowGlass:     '#A8C5D8',
-  windowFrame:     '#FFFFFF',
+  // Exterior — v3 palette tuned to the Champion 05-S30 York, NE rendering
+  housewrap:       '#E8EDF2',     // pale blue-gray (under siding, mostly hidden in final)
+  siding:          '#94A6B3',     // muted blue-gray lap siding (matches rendering)
+  roofShingle:     '#4D3F35',     // warm dark brown asphalt shingles
+  windowGlass:     '#1F2530',     // dark, near-black with subtle reflections
+  windowFrame:     '#FFFFFF',     // white trim around windows
+  doorWood:        '#9B6F4D',     // warm walnut/teak front door (used in v3 porch stage)
 
   // Brand accent
   spearAccent:     '#1A4A7A',
