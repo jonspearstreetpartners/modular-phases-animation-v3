@@ -195,13 +195,34 @@ const tl = buildTimeline(refs, { paused: true });
 // last animation completes — the porch reveal finishes around s12 + 21
 // so the fade begins at s12 + 25. Tween lives on the master timeline so
 // it scrubs correctly when the user drags the progress bar.
+//
+// Belt & suspenders: also tl.set() volume to 0 a moment after the fade
+// completes (some mobile browsers do not commit the final tween frame
+// when the timeline ends), and pause the element on tl complete so it
+// definitely stops on every device.
 {
   const audioEl = document.getElementById('soundtrack');
   if (audioEl) {
     tl.set(audioEl, { volume: 1.0 }, 0);
     tl.to (audioEl, { volume: 0.0, duration: 4.0, ease: 'power1.out' }, STAGE_TIMES.s12 + 25);
+    // Hard-set volume to 0 right at the fade's nominal end (mobile insurance).
+    tl.set(audioEl, { volume: 0.0 }, STAGE_TIMES.s12 + 29);
   }
 }
+
+// On master timeline complete: fully pause + reset audio so nothing keeps
+// playing on devices where the volume tween's final frame doesn't commit
+// (seen on mobile Safari + Chrome). DOM lookup at runtime to avoid the
+// temporal-dead-zone with the `soundtrack` const declared further down.
+tl.eventCallback('onComplete', () => {
+  const audioEl = document.getElementById('soundtrack');
+  if (audioEl) {
+    try {
+      audioEl.volume = 0;
+      audioEl.pause();
+    } catch (_) {}
+  }
+});
 
 // ---------- Debug controls ----------
 let controls = null;
@@ -406,8 +427,12 @@ function setBtnLabel() {
 
 btnPlay?.addEventListener('click', () => {
   if (tl.progress() >= 1) {
+    // REPLAY: timeline ran to completion which paused + zeroed the audio.
+    // Restore volume to 1 BEFORE the timeline's tl.set(volume,1) at t=0
+    // takes over so playback is audible from the first frame again.
+    if (soundtrack) { try { soundtrack.volume = 1.0; } catch (_) {} }
     tl.restart();
-    playAudio();              // restart the soundtrack from the top too
+    playAudio();
   } else if (tl.paused()) {
     tl.play();
     playAudio();
@@ -422,7 +447,10 @@ btnReset?.addEventListener('click', () => {
   tl.pause(0);
   if (soundtrack) {
     pauseAudio();
-    try { soundtrack.currentTime = 0; } catch (_) {}
+    try {
+      soundtrack.currentTime = 0;
+      soundtrack.volume = 1.0;     // restore volume in case the fade-out had zeroed it
+    } catch (_) {}
   }
   setBtnLabel();
   updateTimeUI();
