@@ -267,7 +267,7 @@ export function stageRoof(tl, refs, t0) {
   announce(tl, t0, 8, 'Ceiling, roof framing & marriage wall prep');
 
   for (const m of [refs.moduleA, refs.moduleB]) {
-    const roof = findByName(m, `Roof_${m.userData.side}`);
+    const roof = findByName(m, "Roof");
     if (!roof) continue;
     tl.set(roof, { visible: true }, t0);
 
@@ -418,7 +418,7 @@ export function stageInteriorComplete(tl, refs, t0) {
   // group), so lifting Roof_X carries everything together. The old separate
   // 'roofing' group in Exterior is empty now.
   for (const m of [refs.moduleA, refs.moduleB]) {
-    const roofGroup = findByName(m, `Roof_${m.userData.side}`);
+    const roofGroup = findByName(m, "Roof");
     if (roofGroup) {
       const restY = roofGroup.position.y;
       tl.to(roofGroup.position, { y: restY + ROOF_LIFT, duration: LIFT_DUR,   ease: 'power2.inOut' }, LIFT_AT);
@@ -479,7 +479,7 @@ export function stageTransport(tl, refs, t0) {
   // Module A's hinge sign is -1 (rotates negative to lower); Module B's is +1.
   // Final rotation = hingeSign * PITCH_ANGLE, lowering the high end to flat.
   for (const m of [refs.moduleA, refs.moduleB]) {
-    const hinge = findByName(m, `Roof_${m.userData.side}_hinge`);
+    const hinge = findByName(m, "Roof_hinge");
     if (!hinge) continue;
     const finalAngle = hinge.userData.hingeSign * PITCH_ANGLE;
     tl.to(hinge.rotation, {

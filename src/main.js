@@ -57,10 +57,14 @@ buildGround(scene);
 // Internally we keep `side='A'` and `side='B'` so the existing per-side
 // helpers in mep.js / interior.js etc. continue to produce sensible
 // geometry until split into per-floor variants in a later commit.
-function buildModule({ name, side, factoryX }) {
+// `withRoof` — only the UPPER module gets the gable roof framing + shingle slabs.
+// The LOWER module gets a flat ceiling/roof at the site stage when the upper
+// is stacked on top (which acts as its lid). For now, lower has no roof at all.
+function buildModule({ name, side, factoryX, withRoof = false }) {
   const group = new THREE.Group();
   group.name = name;
   group.userData.side = side;
+  group.userData.withRoof = withRoof;
 
   group.add(buildModuleFloorFrame());                 // Stage 1
   group.add(buildModuleFloorMEP({ side }));           // Stage 2
@@ -69,7 +73,7 @@ function buildModule({ name, side, factoryX }) {
   group.add(buildModuleWalls());                      // Stage 5
   group.add(buildModuleRoughIn({ side }));            // Stage 6
   group.add(buildModuleInsulation());                 // Stage 7
-  group.add(buildModuleRoof({ side }));               // Stage 8
+  if (withRoof) group.add(buildModuleRoof({ side })); // Stage 8 — UPPER only
   group.add(buildModuleExterior({ side }));           // Stage 9
   group.add(buildModuleInterior({ side }));           // Stage 10
 
@@ -77,8 +81,8 @@ function buildModule({ name, side, factoryX }) {
   return group;
 }
 
-const moduleLower = buildModule({ name: 'Module_lower', side: 'A', factoryX: MODULE_LOWER.factoryX });
-const moduleUpper = buildModule({ name: 'Module_upper', side: 'B', factoryX: MODULE_UPPER.factoryX });
+const moduleLower = buildModule({ name: 'Module_lower', side: 'A', factoryX: MODULE_LOWER.factoryX, withRoof: false });
+const moduleUpper = buildModule({ name: 'Module_upper', side: 'B', factoryX: MODULE_UPPER.factoryX, withRoof: true  });
 scene.add(moduleLower);
 scene.add(moduleUpper);
 
