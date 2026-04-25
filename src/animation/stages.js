@@ -402,12 +402,7 @@ export function stageExterior(tl, refs, t0) {
 //   7. Final hold
 // (Modules sit with MODULE_GAP between them during ALL prior stages.)
 // ============================================================================
-import { MODULE } from '../utils/dimensions.js';
-// COMBINE_OFFSET no longer exists in v3 (no marriage wall). Stage 10's
-// combine/separate is a visual no-op for commit 1 — moduleA and moduleB refs
-// both point at the SAME single module, so the tweens still fire but the
-// module just sits in place. Replaced with proper stacking in a later commit.
-const COMBINE_OFFSET = 0;
+import { COMBINE_OFFSET, MODULE } from '../utils/dimensions.js';
 
 export function stageInteriorComplete(tl, refs, t0) {
   announce(tl, t0, 10, 'Interior finish');

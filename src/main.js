@@ -50,51 +50,48 @@ const camera = buildOrthoCamera(window.innerWidth, window.innerHeight, 70);
 buildLighting(scene);
 buildGround(scene);
 
-// ---------- Build the module ----------
-// v3 (commit 1): Single module instance for now. Commit 2 will add the second
-// (upper-floor) module. Internally we keep `side='A'` so the existing per-side
-// helpers in mep.js / interior.js / etc. (which key off side === 'A') continue
-// to produce sensible geometry positions until those builders are split into
-// per-floor variants in commit 3.
-function buildModule({ name, side = 'A' }) {
+// ---------- Build both modules ----------
+// v3: Two modules built IN PARALLEL during stages 1-9, side-by-side on the
+// factory floor. They represent the LOWER-floor and UPPER-floor of one
+// two-story home (vs v1's duplex pair). Stacking happens at the site stage.
+// Internally we keep `side='A'` and `side='B'` so the existing per-side
+// helpers in mep.js / interior.js etc. continue to produce sensible
+// geometry until split into per-floor variants in a later commit.
+function buildModule({ name, side, factoryX }) {
   const group = new THREE.Group();
   group.name = name;
   group.userData.side = side;
 
-  // Stage 1
-  group.add(buildModuleFloorFrame());
-  // Stage 2 — in-floor-cavity MEP rough-in
-  group.add(buildModuleFloorMEP({ side }));
-  // Stage 3
-  group.add(buildModuleSubfloor());
-  // Stage 4
-  group.add(buildModuleStubs({ side }));
-  // Stage 5
-  group.add(buildModuleWalls());
-  // Stage 6
-  group.add(buildModuleRoughIn({ side }));
-  // Stage 7 — insulation only (drywall is pre-installed on walls in Stage 5)
-  group.add(buildModuleInsulation());
-  // Stage 8
-  group.add(buildModuleRoof({ side }));
-  // Stage 9
-  group.add(buildModuleExterior({ side }));
-  // Stage 10
-  group.add(buildModuleInterior({ side }));
+  group.add(buildModuleFloorFrame());                 // Stage 1
+  group.add(buildModuleFloorMEP({ side }));           // Stage 2
+  group.add(buildModuleSubfloor());                   // Stage 3
+  group.add(buildModuleStubs({ side }));              // Stage 4
+  group.add(buildModuleWalls());                      // Stage 5
+  group.add(buildModuleRoughIn({ side }));            // Stage 6
+  group.add(buildModuleInsulation());                 // Stage 7
+  group.add(buildModuleRoof({ side }));               // Stage 8
+  group.add(buildModuleExterior({ side }));           // Stage 9
+  group.add(buildModuleInterior({ side }));           // Stage 10
 
+  group.position.set(factoryX, 0, 0);
   return group;
 }
 
-const moduleLower = buildModule({ name: 'Module_lower', side: 'A' });
-moduleLower.position.set(MODULE_LOWER.factoryX, 0, 0);
+const moduleLower = buildModule({ name: 'Module_lower', side: 'A', factoryX: MODULE_LOWER.factoryX });
+const moduleUpper = buildModule({ name: 'Module_upper', side: 'B', factoryX: MODULE_UPPER.factoryX });
 scene.add(moduleLower);
+scene.add(moduleUpper);
 
-// ---------- Build truck (Stage 11 transport) ----------
-// v3 commit 1: single truck for the single module. Second truck added in commit 2.
+// ---------- Build trucks (Stage 11 transport) ----------
 const truckLower = buildTruckAndTrailer({ side: 'A' });
 truckLower.position.set(MODULE_LOWER.factoryX, 0, 0);
 truckLower.visible = false;
 scene.add(truckLower);
+
+const truckUpper = buildTruckAndTrailer({ side: 'B' });
+truckUpper.position.set(MODULE_UPPER.factoryX, 0, 0);
+truckUpper.visible = false;
+scene.add(truckUpper);
 
 // ---------- Hide all stage geometry at startup ----------
 // Stages set things visible at their start time. Stage 1 (FloorFrame) needs to be
@@ -112,19 +109,14 @@ const STAGE_GROUP_NAMES = [
   'Interior',            // Stage 10
 ];
 
-for (const m of [moduleLower]) {
+for (const m of [moduleLower, moduleUpper]) {
   for (const name of STAGE_GROUP_NAMES) {
     if (name === 'FloorFrame') continue;        // visible from t=0
     const g = m.getObjectByName(name);
     if (g) g.visible = false;
   }
-  // Roof group (no longer per-side in v3 — single full gable)
   const roof = m.getObjectByName('Roof');
   if (roof) roof.visible = false;
-
-  // The shingle slabs live INSIDE the roof hinge group (so they hinge together
-  // with the trusses for transport). Hide them independently so Stage 9's drop
-  // reveal still plays — Stage 8 only reveals the trusses.
   m.traverse((o) => {
     if (o.name && o.name.startsWith('roof_slab')) o.visible = false;
   });
@@ -136,20 +128,15 @@ for (const m of [moduleLower]) {
 // To make a manual reset work later, we'll snapshot in the reset handler.
 
 // ---------- Build master timeline ----------
-// v3 refs: only one module + truck for commit 1. We still expose moduleA/B and
-// truckA/B aliases pointing at the lower instance so the existing Stage 1-11
-// code (which iterates over both) doesn't crash. Stage 10's combine/separate
-// will visibly do nothing because both refs point at the same group; that's
-// intentional for commit 1 and replaced cleanly when the upper module lands.
+// v3 refs: lower + upper modules each map to v1's A / B compat names so the
+// existing stage code (which iterates over [moduleA, moduleB]) just works.
 const refs = {
   scene,
-  moduleLower,
-  truckLower,
-  // Compat shims so v1's stages.js iterates over [moduleA, moduleB] without crashing.
-  moduleA: moduleLower,
-  moduleB: moduleLower,
-  truckA:  truckLower,
-  truckB:  truckLower,
+  moduleLower, moduleUpper,
+  truckLower,  truckUpper,
+  // Compat aliases for v1 stage code
+  moduleA: moduleLower, moduleB: moduleUpper,
+  truckA:  truckLower,  truckB:  truckUpper,
   camera,
   renderer,
 };

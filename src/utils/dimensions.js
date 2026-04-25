@@ -59,22 +59,39 @@ export function computeUpperStackY() {
   return lowerSubfloorTop + MODULE.wallHeight + MODULE.ceilingThickness;
 }
 
-// World placement (single column, stacked vertically).
-// Both modules sit at world X=0. During factory build they may sit at different
-// X to be visible side-by-side; during stacking the upper rides up to its
-// final Y over the lower at X=0.
+// World placement — both modules built IN PARALLEL during stages 1-9, sitting
+// side-by-side on the factory floor. Same staging as v1's duplex pair, but for
+// v3 these represent lower-floor and upper-floor of a SINGLE two-story home
+// that gets stacked together at the site stage.
+//
+// At factory time:
+//   LOWER module: world x = -10..+5.17, center at x = -2.42  (left-of-center)
+//   UPPER module: world x = +5.17..+20.34, center at x = +12.76 (right of LOWER)
+// Gap of 4 ft between them so they're visibly distinct.
+//
+// At site time: LOWER stays at x=0, UPPER slides over and is craned ONTO it
+// at the same x=0 but elevated by computeUpperStackY().
+export const MODULE_GAP = 4;
+const _half = MODULE.width / 2;
+
 export const MODULE_LOWER = {
   side: 'lower',
   level: 0,
-  // Built first in the factory at world X=0.
-  factoryX: 0,
+  factoryX: -(_half + MODULE_GAP / 2),     // sits left of center on factory floor
+  // Compat shim so v1 stage code that reads `centerX` finds something sensible
+  centerX: -(_half + MODULE_GAP / 2),
+  marriageSign: +1,
 };
 export const MODULE_UPPER = {
   side: 'upper',
   level: 1,
-  // Built second; sits adjacent to lower in the factory until both complete,
-  // then slides over and craned into place. We park it to +Z initially so
-  // it's "behind" lower from the camera's iso angle (lower stays in front).
-  factoryX: 0,
-  factoryZ: 60,                     // 60 ft behind lower in factory
+  factoryX: +(_half + MODULE_GAP / 2),     // sits right of center on factory floor
+  centerX: +(_half + MODULE_GAP / 2),
+  marriageSign: -1,
 };
+
+// Half-width offset that v1's COMBINE_OFFSET used during the stage-10
+// combine-then-separate moment. v3 doesn't combine on the factory floor (the
+// modules stack at the site stage instead) so this is 0 — we keep the export
+// for backward-compat with stages.js which still references it.
+export const COMBINE_OFFSET = 0;
