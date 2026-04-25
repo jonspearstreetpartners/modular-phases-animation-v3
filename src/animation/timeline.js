@@ -143,7 +143,13 @@ export function buildTimeline(refs, { paused = true } = {}) {
     duration: 1.6,
     ease: 'power2.inOut',
     scale: 1.0,
-    x: -100,                  // ~100 px left of center
+    // Pixel offset relative to the centered baseline (the CSS rule sets
+    // top: 50%; left: 50%; transform: translate(-50%, -50%); so x is a
+    // pixel delta from that center). Going far left so the big logo clears
+    // the assembled home which sits at the right side of the camera frame
+    // (SITE_X = +30 in world space). Falls back to a smaller offset on
+    // very narrow screens so the logo doesn't slide off the left edge.
+    x: () => -Math.min(380, window.innerWidth * 0.28),
     y: 0,
   }, outroAt + 0.1);
 

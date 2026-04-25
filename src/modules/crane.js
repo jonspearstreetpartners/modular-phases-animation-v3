@@ -218,27 +218,36 @@ export function updateCraneCables(crane) {
   const boomPivot = crane.userData.boomPivot;
   if (!hook) return;
 
-  // ---- Boom rotation: aim boom tip at the current hook X ----
+  // ---- Boom rotation ----
+  // The boom is a rigid arm — a real crane cannot snap its slew angle to
+  // chase a load that's moving laterally at 5+ ft/s. So instead of aiming
+  // the boom directly at the hook (which produced the "module passes
+  // through the boom" feel during X-translation phases), we keep the
+  // boom's tip at a roughly stable X that lies slightly OUTBOARD of the
+  // hook's current X, and let the angle vary mostly with hook elevation.
+  // Visual effect: boom dips when the hook descends to grab, rises when
+  // the hook lifts, and stays clear of the load's path during cruise.
   if (boomPivot) {
     const mastTop = hook.userData.mastTop;
     const boomLen = hook.userData.boomLen;
     const hookX = hook.position.x;
     const hookY = hook.position.y;
 
-    // The boom tip should sit slightly ABOVE the hook (the hook hangs from
-    // cables). Aim at (hookX, hookY + targetCableLen).
-    const targetCableLen = 8;
-    const aimY = hookY + targetCableLen;
-    const dx = hookX;
-    const dy = aimY - mastTop;
+    // Aim X: boom tip stays ahead of (= farther from mast than) the hook,
+    // with a comfortable minimum so it never folds back onto the cab.
+    const aimX = Math.max(20, hookX + 4);
 
-    // Boom angle = atan of the line from mast top to aim point.
+    // Aim Y: slightly above the hook so cables remain vertical.
+    const aimY = hookY + 8;
+
+    const dx = aimX;
+    const dy = aimY - mastTop;
     let angle = Math.atan2(dy, Math.max(0.5, dx));
-    // Clamp so the boom doesn't flip backward or stand straight up.
-    angle = Math.max(-Math.PI / 3, Math.min(Math.PI / 6, angle));
+    // Clamp wider than before so the boom can dip down to low hook positions.
+    angle = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 6, angle));
     boomPivot.rotation.z = angle;
 
-    // Update cached boom tip position for the cable length math below.
+    // Cache resolved boom-tip world position for cable length math.
     const tipX = boomLen * Math.cos(angle);
     const tipY = mastTop + boomLen * Math.sin(angle);
     hook.userData.boomTipX = tipX;

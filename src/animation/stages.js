@@ -756,4 +756,32 @@ export function stageSiteStacking(tl, refs, t0) {
       });
     });
   }
+
+  // ===== STEP 9 (19.5 → 22.5) — Landscape grows out of the ground =====
+  // After the porch finishes, lawn appears, then bushes + grass clumps grow
+  // up from y=0 (their geometry is bottom-anchored so scale.y from 0 reads
+  // as a plant rising out of the ground). Tiered by userData.assemblyOrder
+  // so the lawn lays down first, then shrubs, then grass, then corner bushes.
+  const landscape = refs.landscape;
+  if (landscape) {
+    tl.set(landscape, { visible: true }, t0 + 19.5);
+    const lTiers = new Map();
+    landscape.traverse((o) => {
+      const idx = o.userData?.assemblyOrder;
+      if (idx === undefined) return;
+      if (!lTiers.has(idx)) lTiers.set(idx, []);
+      lTiers.get(idx).push(o);
+    });
+    const lOrders = [...lTiers.keys()].sort((a, b) => a - b);
+    lOrders.forEach((ord, i) => {
+      const meshes = lTiers.get(ord);
+      meshes.forEach((mesh) => {
+        tl.set(mesh.scale, { x: 0.001, y: 0.001, z: 0.001 }, t0 + 19.5);
+        tl.to (mesh.scale, {
+          x: 1, y: 1, z: 1,
+          duration: 0.5, ease: 'back.out(1.6)',
+        }, t0 + 19.5 + i * 0.35);
+      });
+    });
+  }
 }

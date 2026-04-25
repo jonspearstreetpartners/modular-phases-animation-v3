@@ -25,6 +25,7 @@ import { buildTruckAndTrailer } from './modules/truck.js';
 import { buildFoundation } from './modules/foundation.js';
 import { buildCrane, updateCraneCables } from './modules/crane.js';
 import { buildPorch } from './modules/porch.js';
+import { buildLandscape } from './modules/landscape.js';
 
 import { buildTimeline, STAGE_TIMES } from './animation/timeline.js';
 
@@ -121,6 +122,11 @@ porch.position.set(SITE_X, 0.8, 0);       // sits at the stacked home's location
 porch.visible = false;
 scene.add(porch);
 
+const landscape = buildLandscape();
+landscape.position.set(SITE_X, 0, 0);
+landscape.visible = false;
+scene.add(landscape);
+
 
 // ---------- Hide all stage geometry at startup ----------
 // In v3 we hide EVERYTHING (including FloorFrame) so the scene is empty
@@ -166,7 +172,7 @@ const refs = {
   moduleA: moduleLower, moduleB: moduleUpper,
   truckA:  truckLower,  truckB:  truckUpper,
   // v3 site stage assets
-  foundation, crane, porch,
+  foundation, crane, porch, landscape,
   siteX: SITE_X,
   camera,
   renderer,
