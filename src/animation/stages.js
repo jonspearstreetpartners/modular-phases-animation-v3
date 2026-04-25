@@ -402,6 +402,20 @@ export function stageExterior(tl, refs, t0) {
       tl.set(slab,          { visible: true                   }, t0 + 3.5 + i * 0.1);
       tl.to (slab.position, { y: restY, duration: 1.0, ease: 'power2.in' }, t0 + 3.5 + i * 0.1);
     });
+
+    // 5) Once the slabs are fully placed, hide the underlying truss framing
+    //    (Roof_static = chords + king-posts) and the rafters. The shingles are
+    //    the visible finish from now on — exposed framing through them looks
+    //    wrong from the iso angle. Both must be re-hidden at this point even
+    //    if the fold animation runs later (the slabs are what fold visibly).
+    const slabFinishedAt = t0 + 3.5 + Math.max(0, slabs.length - 1) * 0.1 + 1.0;
+    const trussStatic = findByName(m, 'Roof_static');
+    if (trussStatic) tl.set(trussStatic, { visible: false }, slabFinishedAt);
+    m.traverse((o) => {
+      if (o.name && (o.name.startsWith('rafter_west_') || o.name.startsWith('rafter_east_'))) {
+        tl.set(o, { visible: false }, slabFinishedAt);
+      }
+    });
   }
 }
 
@@ -465,6 +479,21 @@ export function stageTransport(tl, refs, t0) {
         ease: 'power2.inOut',
       }, t0 + 0.2);
     }
+
+    // King-posts (vertical center webs in Roof_static) would otherwise stick
+    // straight up after the fold. Stage 9 already hides Roof_static, but in
+    // case a viewer scrubs back to a state where it's visible, scale the
+    // king-posts to zero on the same timing as the fold so they collapse with
+    // the fold rather than remain standing.
+    m.traverse((o) => {
+      if (o.name && o.name.startsWith('kingpost_')) {
+        tl.to(o.scale, {
+          x: 0.001, y: 0.001, z: 0.001,
+          duration: 1.2,
+          ease: 'power2.inOut',
+        }, t0 + 0.4);
+      }
+    });
   }
 
   // ---- 2) Trucks slide in from +Z (2.0 → 3.7s) ----
