@@ -35,24 +35,26 @@ export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0)
   const startAngle = Math.atan2(camera.position.z, camera.position.x);
   const startFrustum = camera.userData.frustumSize ?? 70;
 
-  // Lookat target: ~6 ft above ground (mid-height of the assembled modules)
-  const target = { x: 0, y: 6, z: 0 };
-
   // Proxy object — GSAP animates these scalars; a single onUpdate writes them
-  // to the camera each frame.
+  // to the camera each frame. Lookat target (centerX/centerY/centerZ) is part
+  // of the proxy so it can be animated too — letting us pivot the gaze to the
+  // SITE_X assembly location for the front-on close-in shot at the end.
   const proxy = {
-    angle:       startAngle,        // radians, polar around Y
-    distance:    startDistance,     // distance from Y axis
+    angle:       startAngle,        // radians, polar around (centerX, _, centerZ)
+    distance:    startDistance,     // distance from the orbit center in XZ plane
     elevation:   camera.position.y, // world Y of the camera
     frustumSize: startFrustum,      // ortho frustum size
+    centerX:     0,                 // orbit center X (lookAt + polar pivot)
+    centerY:     6,                 // lookAt Y (height the camera aims at)
+    centerZ:     0,                 // orbit center Z
   };
 
   const _size = new THREE.Vector2();
   const applyProxy = () => {
-    camera.position.x = proxy.distance * Math.cos(proxy.angle);
-    camera.position.z = proxy.distance * Math.sin(proxy.angle);
+    camera.position.x = proxy.centerX + proxy.distance * Math.cos(proxy.angle);
+    camera.position.z = proxy.centerZ + proxy.distance * Math.sin(proxy.angle);
     camera.position.y = proxy.elevation;
-    camera.lookAt(target.x, target.y, target.z);
+    camera.lookAt(proxy.centerX, proxy.centerY, proxy.centerZ);
     if (camera.isOrthographicCamera) {
       // Read render size from the renderer when available so MP4 export at a
       // different resolution doesn't distort the camera frustum.
@@ -104,4 +106,23 @@ export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0)
     frustumSize: 70,
     elevation:   36,
   }, 42.0, 10.0, 'power1.inOut');
+
+  // 75 – 78: FRONT-ON CLOSE-IN SHOT of the assembled home at SITE_X = +30.
+  // Lands at the end of Stage 12 (outro) so the porch reveal, landscape
+  // grow, and outro logo all play against this close shot of the home.
+  // Camera looks straight at the +Z gable end (porch + door + front
+  // windows), with slight elevation showing the gable peak.
+  //   - centerX/centerZ swing the orbit pivot to (30, 0, 0)
+  //   - angle = π/2 puts camera at +Z relative to that pivot
+  //   - distance = 35 + frustumSize 35 = close, intimate framing
+  //   - elevation = 14 picks up both stories of the home
+  move({
+    centerX:     30,
+    centerY:     10,
+    centerZ:     0,
+    angle:       Math.PI / 2,
+    distance:    35,
+    elevation:   14,
+    frustumSize: 35,
+  }, 75.0, 3.0, 'power2.inOut');
 }
