@@ -648,55 +648,67 @@ export function stageSiteStacking(tl, refs, t0) {
     }, atTime);
   };
 
+  // Hook is always placed ABOVE the module's TOP with this much clearance,
+  // so the very-short cables (2 ft, set in crane.js) and the boom that sits
+  // just above the hook all stay clear of the load.
+  const MODULE_TOP_OFFSET = MODULE.joistHeight + MODULE.subfloorThickness + MODULE.wallHeight; // floor frame bottom -> wall plate top
+  const HOOK_CLEAR_ABOVE_TOP = 4;     // ft above module top where the hook sits
+
   // ===== STEP 5 (7.0 → 11.0) — Crane picks up LOWER, places on foundation =====
   // The hook is ALREADY positioned over the lower module's X from step 4 —
   // its first action is just to descend straight down to the module top.
   if (moduleA && hook) {
     const lowerStartX = moduleA.position.x;
+    const moduleTopY = () => moduleA.position.y + MODULE_TOP_OFFSET;
 
-    // Phase A (7.0 → 8.0) — hook descends straight down onto module top
-    moveHook(lowerStartX, 8, t0 + 7.0, 1.0);
+    // Phase A (7.0 → 8.0) — hook descends straight down to just ABOVE module top
+    moveHook(lowerStartX, moduleTopY() + HOOK_CLEAR_ABOVE_TOP, t0 + 7.0, 1.0);
 
-    // Phase B (8.0 → 9.0) — module + hook rise straight up
+    // Phase B (8.0 → 9.0) — module + hook rise straight up (hook stays above module top)
     tl.to(moduleA.position, {
       y: LIFT_HOVER, duration: 1.0, ease: 'power2.out',
     }, t0 + 8.0);
-    moveHook(lowerStartX, LIFT_HOVER + 8, t0 + 8.0, 1.0);
+    moveHook(lowerStartX, LIFT_HOVER + MODULE_TOP_OFFSET + HOOK_CLEAR_ABOVE_TOP,
+      t0 + 8.0, 1.0);
 
-    // Phase C (9.0 → 10.0) — module + hook translate east to SITE_X
+    // Phase C (9.0 → 10.0) — module + hook translate east to SITE_X (hook still above)
     tl.to(moduleA.position, {
       x: SITE_X, duration: 1.0, ease: 'power2.inOut',
     }, t0 + 9.0);
-    moveHook(SITE_X, LIFT_HOVER + 8, t0 + 9.0, 1.0);
+    moveHook(SITE_X, LIFT_HOVER + MODULE_TOP_OFFSET + HOOK_CLEAR_ABOVE_TOP,
+      t0 + 9.0, 1.0);
 
     // Phase D (10.0 → 11.0) — module + hook descend onto foundation
     tl.to(moduleA.position, {
       y: FOUNDATION_TOP, duration: 1.0, ease: 'power2.in',
     }, t0 + 10.0);
-    moveHook(SITE_X, FOUNDATION_TOP + 8, t0 + 10.0, 1.0);
+    moveHook(SITE_X, FOUNDATION_TOP + MODULE_TOP_OFFSET + HOOK_CLEAR_ABOVE_TOP,
+      t0 + 10.0, 1.0);
   }
 
   // ===== STEP 6 (11.0 → 14.5) — Crane picks up UPPER, stacks on top =====
   if (moduleB && hook) {
     const upperStartX = moduleB.position.x;
+    const moduleTopY = () => moduleB.position.y + MODULE_TOP_OFFSET;
 
-    // Phase A (11.0 → 12.0) — hook releases lower, slides over upper module
-    moveHook(upperStartX, 13, t0 + 11.0, 1.0);
+    // Phase A (11.0 → 12.0) — hook slides over upper module, descends to module top
+    moveHook(upperStartX, moduleTopY() + HOOK_CLEAR_ABOVE_TOP, t0 + 11.0, 1.0);
 
-    // Phase B (12.0 → 13.0) — upper rises straight up + hook tracks
+    // Phase B (12.0 → 13.0) — upper rises straight up + hook tracks above
     tl.to(moduleB.position, {
       y: STACK_Y + LIFT_HOVER, duration: 1.0, ease: 'power2.out',
     }, t0 + 12.0);
-    moveHook(upperStartX, STACK_Y + LIFT_HOVER + 8, t0 + 12.0, 1.0);
+    moveHook(upperStartX,
+      STACK_Y + LIFT_HOVER + MODULE_TOP_OFFSET + HOOK_CLEAR_ABOVE_TOP,
+      t0 + 12.0, 1.0);
 
-    // Phase C (13.0 → 14.0) — upper translates west to SITE_X (over lower module).
-    // ALSO start unfolding the rafter hinges. Module is animating in world
-    // space directly, hinges are children of the module in module-local
-    // coords — rotation works cleanly.
+    // Phase C (13.0 → 14.0) — upper translates west to SITE_X over the lower
     tl.to(moduleB.position, {
       x: SITE_X, duration: 1.0, ease: 'power2.inOut',
     }, t0 + 13.0);
-    moveHook(SITE_X, STACK_Y + LIFT_HOVER + 8, t0 + 13.0, 1.0);
+    moveHook(SITE_X,
+      STACK_Y + LIFT_HOVER + MODULE_TOP_OFFSET + HOOK_CLEAR_ABOVE_TOP,
+      t0 + 13.0, 1.0);
 
     moduleB.traverse((o) => {
       if (o.name === 'Roof_hinge_west' || o.name === 'Roof_hinge_east') {
@@ -706,11 +718,12 @@ export function stageSiteStacking(tl, refs, t0) {
       }
     });
 
-    // Phase D (14.0 → 14.5) — upper descends onto stacked position
+    // Phase D (14.0 → 14.5) — upper descends onto stacked position; hook tracks above
     tl.to(moduleB.position, {
       y: STACK_Y, duration: 0.8, ease: 'power2.in',
     }, t0 + 14.0);
-    moveHook(SITE_X, STACK_Y + 8, t0 + 14.0, 0.8);
+    moveHook(SITE_X, STACK_Y + MODULE_TOP_OFFSET + HOOK_CLEAR_ABOVE_TOP,
+      t0 + 14.0, 0.8);
   }
 
   // ===== STEP 7 (14.5 → 16.5) — Crane drives away in -X =====

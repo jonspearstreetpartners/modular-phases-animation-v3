@@ -219,32 +219,33 @@ export function updateCraneCables(crane) {
   if (!hook) return;
 
   // ---- Boom rotation ----
-  // The boom is a rigid arm — a real crane cannot snap its slew angle to
-  // chase a load that's moving laterally at 5+ ft/s. So instead of aiming
-  // the boom directly at the hook (which produced the "module passes
-  // through the boom" feel during X-translation phases), we keep the
-  // boom's tip at a roughly stable X that lies slightly OUTBOARD of the
-  // hook's current X, and let the angle vary mostly with hook elevation.
-  // Visual effect: boom dips when the hook descends to grab, rises when
-  // the hook lifts, and stays clear of the load's path during cruise.
+  // Goal: boom + hook move as a tight rigid unit so the load NEVER appears
+  // to pass through the boom or its cables. We sacrifice realism (real
+  // crane hooks dangle 10-20 ft below the boom tip on long cables) for
+  // the much more important property of "geometry never penetrates other
+  // geometry."
+  //
+  // Strategy: the boom aims so its TIP sits directly over the hook with
+  // only a SHORT cable gap. As the hook moves, the boom tracks 1:1.
   if (boomPivot) {
     const mastTop = hook.userData.mastTop;
     const boomLen = hook.userData.boomLen;
     const hookX = hook.position.x;
     const hookY = hook.position.y;
 
-    // Aim X: boom tip stays ahead of (= farther from mast than) the hook,
-    // with a comfortable minimum so it never folds back onto the cab.
-    const aimX = Math.max(20, hookX + 4);
-
-    // Aim Y: slightly above the hook so cables remain vertical.
-    const aimY = hookY + 8;
-
+    // Tight cable gap: boom tip sits just 2 ft above the hook so the
+    // cables visible between them are short and the whole hoist assembly
+    // travels with the load.
+    const targetCableLen = 2;
+    const aimX = Math.max(8, hookX);          // small minimum so boom never folds onto cab
+    const aimY = hookY + targetCableLen;
     const dx = aimX;
     const dy = aimY - mastTop;
     let angle = Math.atan2(dy, Math.max(0.5, dx));
-    // Clamp wider than before so the boom can dip down to low hook positions.
-    angle = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 6, angle));
+    // Allow steep down-angles so boom can lower with the hook.
+    // Wide clamp (-82° to +60°) — boom can both dip steeply down AND
+    // angle steeply up to reach high hook positions during cruise.
+    angle = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 3, angle));
     boomPivot.rotation.z = angle;
 
     // Cache resolved boom-tip world position for cable length math.
