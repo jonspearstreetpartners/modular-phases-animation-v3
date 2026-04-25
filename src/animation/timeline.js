@@ -37,8 +37,8 @@ export const STAGE_TIMES = {
   s9: 37.0,
   s10: 42.0,
   s11: 47.0,    // v3: shortened Stage 10 from 10s -> 5s (no roof lift, no combine/separate)
-  s12: 57.0,    // v3: site stacking + porch (~21s)
-  end: 78.0,
+  s12: 53.0,    // v3: Stage 11 transport sped up from 10s -> 6s
+  end: 74.0,
 };
 
 export function buildTimeline(refs, { paused = true } = {}) {

@@ -45,21 +45,23 @@ export function buildModuleExterior({ side = 'A' } = {}) {
   const panelH = wH - MODULE.bottomPlateHeight - 2 * MODULE.topPlateHeight;
   const wallY = subfloorTop + wH / 2;
 
-  const outerLongSign = side === 'A' ? -1 : +1;
+  // v3: NO marriage wall — the home is a single module, so siding/sheathing/
+  // housewrap must wrap ALL FOUR exterior walls. Iterating both long walls
+  // (-1 and +1) instead of a single outerLongSign that left one side bare.
+  const outerLongSign = -1;   // (retained as window-placement reference; windows
+                              // still go on a single front-facing wall)
 
   // --- PLYWOOD SHEATHING — covers the studs from outside ---
-  // Goes on FIRST (after insulation in Stage 7), before housewrap and siding.
   const sheathing = new THREE.Group();
   sheathing.name = 'sheathing';
-  {
-    // Outer long wall
-    const xOuter = outerLongSign * (W / 2 + PLY_CTR_OFF);
+  for (const longSign of [-1, +1]) {
+    const xOuter = longSign * (W / 2 + PLY_CTR_OFF);
     const g = new THREE.BoxGeometry(PLY_THICK, wH, L);
     g.translate(0, 0, L / 2);
     const ply = new THREE.Mesh(g, sheathingMat());
     ply.position.set(xOuter, subfloorTop + wH / 2, -L / 2);
     ply.userData.sweepAxis = 'z';
-    ply.name = 'ply_long';
+    ply.name = `ply_long_${longSign > 0 ? 'east' : 'west'}`;
     sheathing.add(ply);
   }
   for (const sign of [-1, 1]) {
@@ -75,22 +77,17 @@ export function buildModuleExterior({ side = 'A' } = {}) {
   }
   group.add(sheathing);
 
-  // --- HOUSEWRAP — thin plane outside the plywood ---
+  // --- HOUSEWRAP — thin plane outside the plywood (BOTH long walls + ends) ---
   const housewrap = new THREE.Group();
   housewrap.name = 'housewrap';
-  {
-    const xOuter = outerLongSign * (W / 2 + HW_CTR_OFF);
-    const hw = new THREE.Mesh(
-      (() => {
-        const g = new THREE.BoxGeometry(HW_THICK, wH, L);
-        g.translate(0, 0, L / 2);
-        return g;
-      })(),
-      housewrapMat(),
-    );
+  for (const longSign of [-1, +1]) {
+    const xOuter = longSign * (W / 2 + HW_CTR_OFF);
+    const g = new THREE.BoxGeometry(HW_THICK, wH, L);
+    g.translate(0, 0, L / 2);
+    const hw = new THREE.Mesh(g, housewrapMat());
     hw.position.set(xOuter, subfloorTop + wH / 2, -L / 2);
     hw.userData.sweepAxis = 'z';
-    hw.name = 'hw_long';
+    hw.name = `hw_long_${longSign > 0 ? 'east' : 'west'}`;
     housewrap.add(hw);
   }
   for (const sign of [-1, 1]) {
@@ -143,16 +140,16 @@ export function buildModuleExterior({ side = 'A' } = {}) {
   }
   group.add(windowsGroup);
 
-  // --- SIDING — horizontal courses on outer long wall + both short walls ---
+  // --- SIDING — horizontal courses on BOTH long walls + both short walls ---
   const sidingGroup = new THREE.Group();
   sidingGroup.name = 'siding';
 
   const courseCount = Math.max(1, Math.round(wH / SIDING_COURSE));
   const courseH = wH / courseCount;
 
-  // Outer long wall: stack courses bottom-to-top, fromY = ground each
-  {
-    const xS = outerLongSign * (W / 2 + SIDING_CTR_OFF);
+  // Both long walls: stack courses bottom-to-top
+  for (const longSign of [-1, +1]) {
+    const xS = longSign * (W / 2 + SIDING_CTR_OFF);
     for (let c = 0; c < courseCount; c++) {
       const yC = subfloorTop + (c + 0.5) * courseH;
       const course = new THREE.Mesh(
@@ -162,7 +159,7 @@ export function buildModuleExterior({ side = 'A' } = {}) {
       course.position.set(xS, yC, 0);
       course.userData.courseIndex = c;
       course.userData.totalCourses = courseCount;
-      course.name = `siding_long_${c}`;
+      course.name = `siding_long_${longSign > 0 ? 'east' : 'west'}_${c}`;
       sidingGroup.add(course);
     }
   }

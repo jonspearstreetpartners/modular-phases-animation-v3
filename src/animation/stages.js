@@ -468,34 +468,27 @@ export function stageTransport(tl, refs, t0) {
       const finalZ = hinge.userData.foldSign * hinge.userData.foldAngle;
       tl.to(hinge.rotation, {
         z: finalZ,
-        duration: 1.6,
+        duration: 1.0,                    // sped up: was 1.6
         ease: 'power2.inOut',
-      }, t0 + 0.2);
+      }, t0 + 0.1);
     }
 
-    // King-posts (vertical center webs in Roof_static) would otherwise stick
-    // straight up after the fold. Stage 9 already hides Roof_static, but in
-    // case a viewer scrubs back to a state where it's visible, scale the
-    // king-posts to zero on the same timing as the fold so they collapse with
-    // the fold rather than remain standing.
     m.traverse((o) => {
       if (o.name && o.name.startsWith('kingpost_')) {
         tl.to(o.scale, {
           x: 0.001, y: 0.001, z: 0.001,
-          duration: 1.2,
+          duration: 0.8,                  // sped up: was 1.2
           ease: 'power2.inOut',
-        }, t0 + 0.4);
+        }, t0 + 0.2);
       }
     });
   }
 
-  // ---- 2) Trucks slide in from +Z (2.0 → 3.7s) ----
-  // Trucks start far +Z (off-screen), drive to the loading position where the
-  // trailer is centered under its module.
-  const TRUCK_OFF_SCREEN_Z = 130;     // far +Z starting point
-  const TRUCK_LOAD_Z       = 0;       // trailer centered on module (z=0)
-  const SLIDE_IN_AT  = t0 + 2.0;
-  const SLIDE_IN_DUR = 1.7;
+  // ---- 2) Trucks slide in from +Z (1.2 → 2.4s) — sped up ----
+  const TRUCK_OFF_SCREEN_Z = 130;
+  const TRUCK_LOAD_Z       = 0;
+  const SLIDE_IN_AT  = t0 + 1.2;
+  const SLIDE_IN_DUR = 1.2;               // sped up: was 1.7
   for (const t of [refs.truckA, refs.truckB]) {
     if (!t) continue;
     tl.set(t, { visible: true }, SLIDE_IN_AT);
@@ -507,14 +500,12 @@ export function stageTransport(tl, refs, t0) {
     }, SLIDE_IN_AT);
   }
 
-  // ---- 3) Hold loaded (3.7 → 4.3s) ----
+  // ---- 3) (no hold; transition straight to drive-away) ----
 
-  // ---- 4) Trucks + modules + trailers drive away in -Z (4.3 → 9.5s) ----
-  // Drive far enough to exit the camera frustum. Animate truck.position.z and
-  // module.position.z together so they move as a unit.
-  const DRIVE_AT  = t0 + 4.3;
-  const DRIVE_DUR = 5.0;
-  const DRIVE_DZ  = -150;             // travel 150 ft -Z (past the far edge)
+  // ---- 4) Trucks + modules drive away in -Z (2.6 → 6.0s) — sped up ----
+  const DRIVE_AT  = t0 + 2.6;
+  const DRIVE_DUR = 3.0;                  // sped up: was 5.0
+  const DRIVE_DZ  = -150;
 
   if (refs.truckA && refs.moduleA) {
     tl.to([refs.truckA.position, refs.moduleA.position],
@@ -562,19 +553,26 @@ export function stageSiteStacking(tl, refs, t0) {
 
   // World-space references
   const FOUNDATION_TOP = 0.8;
-  const LOWER_HEIGHT   =
-    MODULE.joistHeight + MODULE.subfloorThickness + MODULE.wallHeight + MODULE.ceilingThickness;
-  const STACK_Y        = FOUNDATION_TOP + LOWER_HEIGHT;
-  const TRUCK_BED_Y    = 3.0;       // approximate top of truck flatbed
-  const LIFT_HOVER     = 25;        // ft module sits above ground when cruising
+  // No ceilingThickness in STACK_Y — that constant was reserved space for a
+  // floor-to-floor sandwich we never modelled, and it was producing a visible
+  // air gap between the lower module's wall top and the upper module's floor
+  // frame bottom. Stacking the upper module's local origin (= floor frame
+  // bottom) directly on top of the lower module's wall plate eliminates the gap.
+  const LOWER_HEIGHT =
+    MODULE.joistHeight + MODULE.subfloorThickness + MODULE.wallHeight;
+  const STACK_Y      = FOUNDATION_TOP + LOWER_HEIGHT;
+  const LIFT_HOVER   = 25;
 
-  // Hook position is in CRANE-local frame. With the crane parked at
-  // (SITE_X - 22, 0, 0), hook-local x maps to world via:
-  //   worldX = (SITE_X - 22) + hookLocalX
-  // The hook's rest-position y (its dangling height) is set in crane.js.
-  const restHookLocalX = hook ? hook.position.x : 0;
-  const restHookY      = hook ? hook.position.y : 0;
-  const worldToHookLocalX = (worldX) => worldX - (SITE_X - 22);
+  // Crane parks at a FIXED world X far west of every module + the foundation.
+  // The previous parking spot (SITE_X - 22 = +8) sat between the upper module
+  // (x=+9.59) and the lower module (x=-9.59), so the crane was driving
+  // through the upper module on its way in. -25 keeps it permanently west.
+  const CRANE_PARK_X = -25;
+
+  // Hook lives in CRANE-local frame. With crane fixed at world (CRANE_PARK_X,
+  // 0, 0), world X to hook-local X is:
+  //   hookLocalX = worldX - CRANE_PARK_X
+  const worldToHookLocalX = (worldX) => worldX - CRANE_PARK_X;
 
   // ===== STEP 1 (0 → 3) — Trucks + modules drive back into frame =====
   // From z=-150 (left over from Stage 11) up to z=0. They keep their factory X.
@@ -592,20 +590,22 @@ export function stageSiteStacking(tl, refs, t0) {
     });
   }
 
-  // ===== STEP 3 (3.0 → 5.0) — Trucks drive AWAY =====
-  // Trucks pull out to -Z, leaving modules behind on the ground at their
-  // factory X positions. Modules' Y stays where it was (truck bed height),
-  // we'll lower them in the next step when they're picked up.
+  // ===== STEP 3 (3.0 → 5.0) — Trucks drive AWAY in +Z =====
+  // Trucks exit to +Z (north — the OPPOSITE direction from the modules they
+  // are leaving behind). Previously they drove to -Z which routed them
+  // straight through the modules — visible bug.
   for (const truck of [truckA, truckB]) {
-    if (truck) tl.to(truck.position, { z: -200, duration: 2.0, ease: 'power1.in' }, t0 + 3.0);
+    if (truck) tl.to(truck.position, { z: 200, duration: 2.0, ease: 'power1.in' }, t0 + 3.0);
   }
 
-  // ===== STEP 4 (5.0 → 7.0) — Crane drives in from far -X =====
+  // ===== STEP 4 (5.0 → 7.0) — Crane drives in from far -X to fixed parking =====
+  // Crane parks at world x = CRANE_PARK_X (= -25), permanently clear of all
+  // modules and the foundation. After this point it doesn't move again until
+  // step 7 when it drives away. Hook does all the work between.
   if (crane) {
-    const CRANE_REST_X = SITE_X - 22;
     tl.set(crane,          { visible: true }, t0 + 5.0);
-    tl.set(crane.position, { x: SITE_X - 80 }, t0 + 5.0);
-    tl.to (crane.position, { x: CRANE_REST_X, duration: 2.0, ease: 'power2.out' }, t0 + 5.0);
+    tl.set(crane.position, { x: CRANE_PARK_X - 60 }, t0 + 5.0);
+    tl.to (crane.position, { x: CRANE_PARK_X, duration: 2.0, ease: 'power2.out' }, t0 + 5.0);
   }
 
   // Helper: animate the hook to a given WORLD x and a given y (in crane-local
@@ -689,10 +689,8 @@ export function stageSiteStacking(tl, refs, t0) {
 
   // ===== STEP 7 (14.5 → 16.5) — Crane drives away in -X =====
   if (crane) {
-    // First retract the hook to a safe position so cables don't drag through
-    // the freshly stacked home as the crane backs up.
-    moveHook(SITE_X, 35, t0 + 14.5, 0.5);
-    tl.to(crane.position, { x: SITE_X - 100, duration: 2.0, ease: 'power1.in' }, t0 + 15.0);
+    moveHook(CRANE_PARK_X + 5, 35, t0 + 14.5, 0.5);
+    tl.to(crane.position, { x: CRANE_PARK_X - 80, duration: 2.0, ease: 'power1.in' }, t0 + 15.0);
   }
 
   // ===== STEP 8 (16.5 → 19.0) — Porch reveal piece-by-piece =====
