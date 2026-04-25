@@ -135,8 +135,8 @@ export function buildTimeline(refs, { paused = true } = {}) {
   // branding on the top of the rendering is hidden by a CSS clip-path,
   // so only the home + trees + lawn appear.
   const fadeInAt = STAGE_TIMES.s12 + 24.0;       // ~2 s after head-on shot lands
-  tl.set('#final-rendering', { opacity: 0 }, 0);
-  tl.to ('#final-rendering', {
+  tl.set('#final-rendering-wrap', { opacity: 0 }, 0);
+  tl.to ('#final-rendering-wrap', {
     opacity: 1,
     duration: 2.5,
     ease: 'power2.inOut',
