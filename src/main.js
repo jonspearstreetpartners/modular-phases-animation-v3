@@ -33,13 +33,23 @@ import { buildTimeline, STAGE_TIMES } from './animation/timeline.js';
 const DEBUG = new URLSearchParams(location.search).has('debug');
 
 // ---------- Renderer ----------
+// Mobile: antialias is expensive on tile-based mobile GPUs, and at small
+// screen pixel sizes the difference is barely perceptible. Skip it on phones
+// to keep the frame rate up.
+const _isPhone = window.matchMedia('(max-width: 768px)').matches;
 const canvas = document.getElementById('scene-canvas');
 const renderer = new THREE.WebGLRenderer({
   canvas,
-  antialias: true,
+  antialias: !_isPhone,
   alpha: true,
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// Pixel ratio cap: 2 on desktop/laptop, 1.5 on small screens. Phones routinely
+// report DPR=3 which would render 9× the pixels of DPR=1 — way too much for
+// mobile GPUs paired with shadows + IBL.
+renderer.setPixelRatio(Math.min(
+  window.devicePixelRatio,
+  window.matchMedia('(max-width: 768px)').matches ? 1.5 : 2,
+));
 renderer.setSize(window.innerWidth, window.innerHeight);
 configureRenderer(renderer);
 

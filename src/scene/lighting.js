@@ -11,8 +11,13 @@ export function buildLighting(scene) {
   const key = new THREE.DirectionalLight(0xFFFFFF, 1.2);
   key.position.set(50, 80, 30);
   key.castShadow = true;
-  // Halve shadow-map resolution on small/mobile screens to keep mobile GPUs happy.
-  const shadowRes = window.matchMedia('(max-width: 768px)').matches ? 1024 : 2048;
+  // Shadow-map resolution scales with screen class:
+  //   ≤ 380 px (small phones)  → 512  (4× cheaper than tablet)
+  //   ≤ 768 px (phones/tablets) → 1024
+  //   else                       → 2048
+  const isSmallPhone = window.matchMedia('(max-width: 380px)').matches;
+  const isMobile     = window.matchMedia('(max-width: 768px)').matches;
+  const shadowRes = isSmallPhone ? 512 : (isMobile ? 1024 : 2048);
   key.shadow.mapSize.set(shadowRes, shadowRes);
   key.shadow.camera.left = -50;
   key.shadow.camera.right = 50;

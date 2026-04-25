@@ -372,6 +372,11 @@
       @media (max-width: 380px) {
         #stage-indicator { font-size: 12px; padding: 6px 10px; }
         #brand-tag img   { height: 40px; }
+        #stage-chips     { gap: 2px; }
+        .stage-chip      { font-size: 8.5px; padding: 2px 5px; letter-spacing: 0.2px; }
+        /* Hide the EXPORT button on small phones (export is desktop-only realistically;
+           the rendering is too heavy on a phone GPU). */
+        #btn-export      { display: none; }
       }
 
       /* Intro logo: min(70vw, 70vh) is fully responsive — no media queries needed. */
@@ -417,6 +422,10 @@
         font-size: 13px;
         letter-spacing: 1.5px;
         color: var(--text-gray);
+      }
+      @media (max-width: 768px) {
+        #start-overlay-button { padding: 18px 38px; font-size: 18px; letter-spacing: 3px; }
+        #start-overlay-hint   { font-size: 11px; letter-spacing: 1px; padding: 0 16px; text-align: center; }
       }
     </style>
   </head>

@@ -25,11 +25,12 @@ export function buildPerspectiveCamera(width, height, fov = 28) {
   return cam;
 }
 
-// Minimum horizontal extent (world units) required to fit the duplex module pair
-// (~28 ft wide) plus margin. On narrow/portrait screens, frustum scales UP so
-// horizontal extent stays at MIN — keeps the choreography intact while ensuring
-// geometry never clips off-screen.
-const MIN_HORIZONTAL_EXTENT = 50;
+// Minimum horizontal extent (world units) required to fit the entire v3
+// scene at any moment. The widest frame is Stage 12 site assembly: crane
+// chassis at world x = -25, foundation + home at x = +30 — total span ≈ 55
+// plus buffer. On narrow/portrait screens the frustum scales UP so this
+// minimum is preserved; on wide screens the authored frustumSize (60-70) wins.
+const MIN_HORIZONTAL_EXTENT = 75;
 
 // Re-apply ortho frustum after a resize OR a frustumSize change (camera animation).
 export function updateOrthoFrustum(cam, width, height, frustumSize) {
