@@ -134,11 +134,14 @@ export function buildTimeline(refs, { paused = true } = {}) {
   // then fade the photoreal rendering in over 2 s. Champion Homes
   // branding on the top of the rendering is hidden by a CSS clip-path,
   // so only the home + trees + lawn appear.
-  const fadeInAt = STAGE_TIMES.s12 + 24.0;       // ~2 s after head-on shot lands
+  // Cross-fade starts slightly earlier and runs longer than before so the
+  // transition is smoother — overlaps with the tail of the porch reveal /
+  // landscape grow rather than landing as a discrete switch.
+  const fadeInAt = STAGE_TIMES.s12 + 22.5;
   tl.set('#final-rendering-wrap', { opacity: 0 }, 0);
   tl.to ('#final-rendering-wrap', {
     opacity: 1,
-    duration: 2.5,
+    duration: 3.5,
     ease: 'power2.inOut',
   }, fadeInAt);
 

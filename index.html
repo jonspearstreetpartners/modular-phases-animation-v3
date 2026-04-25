@@ -403,12 +403,19 @@
         justify-content: center;
       }
       #final-rendering {
-        max-width: 100%;
-        max-height: 100%;
+        /* Sized SMALLER than the viewport so the cross-fade isn't a jarring
+           size jump from the 3D close-in shot. Bias slightly larger than the
+           camera's framing so it reads as "the same home, just photoreal". */
+        max-width: 78vw;
+        max-height: 78vh;
         width: auto;
         height: auto;
         object-fit: contain;
         display: block;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);   /* gentle drop shadow makes it sit nicely on the gradient */
+      }
+      @media (max-width: 768px) {
+        #final-rendering { max-width: 92vw; max-height: 70vh; }
       }
 
       /* Start-with-sound overlay (shown until user clicks; required by browsers
