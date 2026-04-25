@@ -139,6 +139,60 @@ export function buildModuleExterior({ side = 'A' } = {}) {
     winGroup.position.set(winXOut, winY, wz);
     windowsGroup.add(winGroup);
   }
+
+  // --- UPPER-MODULE FRONT WINDOWS ---
+  // Two tall vertical windows on the +Z gable end, side-by-side, spaced
+  // symmetrically left + right of center. Matches the rendering: they sit
+  // directly above where the porch goes on the lower module. White trim,
+  // dark glass identical to the side windows.
+  if (side === 'B') {
+    const frontWinW = 2.6;
+    const frontWinH = 4.5;
+    const frontSpacing = W * 0.32;        // half-distance between window centers
+    const frontWinY = subfloorTop + 4.5;  // sill higher up the wall, matches rendering
+    const frontWinZ = L / 2 + TOTAL_OFF + 0.02;
+
+    for (const sx of [-1, +1]) {
+      const winGroup = new THREE.Group();
+      winGroup.name = `front_window_${sx > 0 ? 'east' : 'west'}`;
+
+      // White trim frame (oriented for a +Z-facing wall — width along X, depth along Z)
+      const frame = new THREE.Mesh(
+        new THREE.BoxGeometry(frontWinW, frontWinH, 0.08),
+        frameMat(),
+      );
+      frame.castShadow = true;
+      winGroup.add(frame);
+
+      // Dark glass pane, slightly inset behind the trim
+      const pane = new THREE.Mesh(
+        new THREE.BoxGeometry(frontWinW * 0.85, frontWinH * 0.88, 0.04),
+        glassMat(),
+      );
+      pane.position.set(0, 0, -0.04);
+      winGroup.add(pane);
+
+      // Slim horizontal muntin near the middle, matches the side windows
+      const muntin = new THREE.Mesh(
+        new THREE.BoxGeometry(frontWinW * 0.85, 0.08, 0.05),
+        frameMat(),
+      );
+      muntin.position.set(0, 0, 0.005);
+      winGroup.add(muntin);
+
+      // Vertical muntin
+      const vMuntin = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, frontWinH * 0.88, 0.05),
+        frameMat(),
+      );
+      vMuntin.position.set(0, 0, 0.005);
+      winGroup.add(vMuntin);
+
+      winGroup.position.set(sx * frontSpacing, frontWinY, frontWinZ);
+      windowsGroup.add(winGroup);
+    }
+  }
+
   group.add(windowsGroup);
 
   // --- SIDING — horizontal courses on BOTH long walls + both short walls ---
