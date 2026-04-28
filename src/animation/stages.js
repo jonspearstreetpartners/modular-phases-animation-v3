@@ -50,8 +50,10 @@ export function stageSiteWork(tl, refs, t0) {
   const sitework = refs.sitework;
   if (!sitework) return;
 
-  // No announce() — the persistent #phase-label at the top already reads
-  // "Site Work Construction ~ 20-30 days" through both site-work sections.
+  // Stage indicator says "Phase 1 · Site Work — Sewer + Water" through
+  // this section. The persistent #phase-label at the top still reads
+  // the longer "Site Work Construction ~ 20-30 days · Weather Dependent".
+  announce(tl, t0, 1, 'Site Work — Sewer + Water');
 
   tl.set(sitework, { visible: true }, t0);
 
@@ -93,7 +95,8 @@ export function stageFoundationConstruction(tl, refs, t0) {
   const foundation = refs.foundation;
   if (!foundation) return;
 
-  // No announce() — phase label covers it.
+  // Stage indicator updates to the second site-work sub-phase.
+  announce(tl, t0, 1, 'Site Work — Foundation Construction');
 
   tl.set(foundation, { visible: true }, t0);
 

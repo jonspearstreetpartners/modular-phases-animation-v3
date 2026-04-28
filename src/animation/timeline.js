@@ -452,12 +452,13 @@ export function buildTimeline(refs, { paused = true } = {}) {
   // Floor-stage callouts (two SVG groups with leader lines, see #callouts)
   buildFloorCallouts(tl);
 
-  // Fade in the #stage-indicator just before the first factory stage's
-  // announce fires (it was kept hidden through the intro so the empty
-  // "Phase 3 · Timeline ready" box never appears).
+  // Fade in the #stage-indicator just before the FIRST stage announce
+  // fires — that's now the Site Work announce at SITEWORK_TIMES.sw1
+  // (chip 1, "Phase 1 · Site Work — Sewer + Water") rather than the
+  // factory floor at STAGE_TIMES.s1.
   tl.to('#stage-indicator', {
     opacity: 1, duration: 0.6, ease: 'power2.out',
-  }, STAGE_TIMES.s1 - 0.2);
+  }, SITEWORK_TIMES.sw1 - 0.2);
 
   stageFloor(             tl, refs, STAGE_TIMES.s1);
   stageFloorMEP(          tl, refs, STAGE_TIMES.s2);
