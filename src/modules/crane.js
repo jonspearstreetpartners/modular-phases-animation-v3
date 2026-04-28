@@ -119,15 +119,18 @@ export function buildCrane() {
   // the module from off-camera. Earlier versions stretched cables all the
   // way up to an ANCHOR_Y=80 off-camera point, which made the cables
   // appear to penetrate the open-top module from this isometric angle.
-  const CABLE_LEN = 8;          // cable length in ft (visible above hook)
+  const CABLE_LEN = 4;          // cable length in ft (short evocative stub)
   const hook = new THREE.Group();
   hook.name = 'crane_hook';
-  hook.position.set(0, 30, 0);             // initial rest dangle at y=30
+  hook.position.set(0, 50, 0);             // initial rest dangle high above the scene
   group.add(hook);
 
-  // Hook block (small dark box at the bottom of the hook group)
+  // Hook block — tiny so it never reads as penetrating the module from the
+  // isometric Stage 12 camera angle. Earlier sizes (1.6 × 1.2 × 1.6) were
+  // large enough that perspective made the block appear to overlap the
+  // module roof line.
   const hookBlock = new THREE.Mesh(
-    new THREE.BoxGeometry(1.6, 1.2, 1.6),
+    new THREE.BoxGeometry(0.6, 0.4, 0.6),
     hookMat(),
   );
   hookBlock.position.set(0, 0, 0);

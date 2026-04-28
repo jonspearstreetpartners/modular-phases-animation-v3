@@ -648,21 +648,28 @@ export function stageSiteStacking(tl, refs, t0) {
     }, atTime);
   };
 
-  // Hook is always placed ABOVE the module's TOP with this much clearance,
-  // so the very-short cables (2 ft, set in crane.js) and the boom that sits
-  // just above the hook all stay clear of the load.
+  // Hook is always placed WELL ABOVE the module's TOP. Increased from 4 ft
+  // because, from the isometric Stage 12 camera angle, a smaller clearance
+  // made the hook block + cables visually appear to penetrate the open-top
+  // module. With ~16 ft of clearance + only 4 ft of cable above the hook,
+  // the rigging reads as a hint of an off-camera lift, never overlapping
+  // the load.
   const MODULE_TOP_OFFSET = MODULE.joistHeight + MODULE.subfloorThickness + MODULE.wallHeight; // floor frame bottom -> wall plate top
-  const HOOK_CLEAR_ABOVE_TOP = 4;     // ft above module top where the hook sits
+  const HOOK_CLEAR_ABOVE_TOP = 16;    // ft above module top where the hook sits
 
   // ===== STEP 5 (7.0 → 11.0) — Crane picks up LOWER, places on foundation =====
-  // The hook is ALREADY positioned over the lower module's X from step 4 —
-  // its first action is just to descend straight down to the module top.
+  // Hook is ALREADY over the lower module's X from step 4. We SNAP it up to
+  // the high "above module" position rather than tweening a descent — the
+  // cables/hook should never read as dropping onto the load.
   if (moduleA && hook) {
     const lowerStartX = moduleA.position.x;
     const moduleTopY = () => moduleA.position.y + MODULE_TOP_OFFSET;
 
-    // Phase A (7.0 → 8.0) — hook descends straight down to just ABOVE module top
-    moveHook(lowerStartX, moduleTopY() + HOOK_CLEAR_ABOVE_TOP, t0 + 7.0, 1.0);
+    // Phase A (7.0) — snap hook high above the lower module (no descent)
+    tl.set(hook.position, {
+      x: worldToHookLocalX(lowerStartX),
+      y: moduleA.position.y + MODULE_TOP_OFFSET + HOOK_CLEAR_ABOVE_TOP,
+    }, t0 + 7.0);
 
     // Phase B (8.0 → 9.0) — module + hook rise straight up (hook stays above module top)
     tl.to(moduleA.position, {
@@ -691,8 +698,15 @@ export function stageSiteStacking(tl, refs, t0) {
     const upperStartX = moduleB.position.x;
     const moduleTopY = () => moduleB.position.y + MODULE_TOP_OFFSET;
 
-    // Phase A (11.0 → 12.0) — hook slides over upper module, descends to module top
-    moveHook(upperStartX, moduleTopY() + HOOK_CLEAR_ABOVE_TOP, t0 + 11.0, 1.0);
+    // Phase A (11.0 → 12.0) — hook slides horizontally over upper module
+    // (no descent — stays high above the module so cables/hook never read
+    // as dropping onto the load).
+    tl.to(hook.position, {
+      x: worldToHookLocalX(upperStartX),
+      y: moduleB.position.y + MODULE_TOP_OFFSET + HOOK_CLEAR_ABOVE_TOP,
+      duration: 1.0,
+      ease: 'power2.inOut',
+    }, t0 + 11.0);
 
     // Phase B (12.0 → 13.0) — upper rises straight up + hook tracks above
     tl.to(moduleB.position, {
