@@ -234,21 +234,30 @@ export function updateCallouts(refs, camera, _renderer) {
   // Foundation callout sits in the bottom-right — empty space below the
   // foundation pad, matching the user-supplied yellow-circle reference.
   if (fVisible) updateCalloutGroupSingle(_foundationEl, LABEL_TOP_FRAC_BOTTOM, refs.foundation, camera, w, h, 0.5);
-  // Utilities callout: late Stage 12, points at the EAST wall of the home
-  // (X-offset of +W/2 + 1.5) so the leader line stays on the right side
-  // of the house rather than crossing through the front face. Y-offset
-  // halfway up the wall so the dot lands at a natural eye-level point.
-  if (uVisible) updateCalloutGroupSingle(_utilitiesEl,  LABEL_TOP_FRAC_MID,    refs.moduleA,   camera, w, h,
-                                         { x: 8.5, y: 5, z: 0 });
-  // Walls callout: Stage 5. Points at module A's wall area mid-height.
+  // Utilities callout: late Stage 12. Label moved to the BOTTOM-right
+  // (foundation callout is gone by then) and the dot pushed far past
+  // the east wall (offset.x = +14) so the leader line doesn't cut
+  // through the home body. Long callout text pushed the upper-right
+  // version into the module footprint.
+  if (uVisible) updateCalloutGroupSingle(_utilitiesEl,  LABEL_TOP_FRAC_BOTTOM, refs.moduleA,   camera, w, h,
+                                         { x: 14, y: 4, z: 0 });
+  // Walls callout: Stage 5. Aim the dot at the SCREEN-FACING long wall
+  // (+X side of the module, halfway up the wall) so the line lands on
+  // the wall surface rather than module center.
   if (wVisible) updateCalloutGroupSingle(_wallsEl,      LABEL_TOP_FRAC_MID,    refs.moduleA,   camera, w, h,
-                                         { x: 0, y: 8, z: 0 });
-  // Roof callout: Stage 8. Points at module B (upper, the one with a roof).
+                                         { x: 7, y: 5, z: 0 });
+  // Roof callout: Stage 8. Pushed FAR to the right of module B (offset.x
+  // = 12 ≈ a full module-width past center) so the leader line never
+  // crosses the truss / module body — anchors at a point in the air to
+  // the right of the roof peak instead.
   if (rVisible) updateCalloutGroupSingle(_roofEl,       LABEL_TOP_FRAC_MID,    refs.moduleB,   camera, w, h,
-                                         { x: 0, y: 12, z: 0 });
-  // Driveway callout: late Stage 12. Refs.porch contains the walkway mesh
-  // (porch_walkway). Aim at the porch group center; its world position
-  // sits over the walkway since the porch is centered on the home.
-  if (dVisible) updateCalloutGroupSingle(_drivewayEl,   LABEL_TOP_FRAC_BOTTOM, refs.porch,     camera, w, h,
-                                         { x: 0, y: 0.5, z: 0 });
+                                         { x: 12, y: 13, z: 0 });
+  // Driveway callout: late Stage 12. Targets the WALKWAY mesh
+  // specifically (porch_walkway) inside the porch group, so the dot
+  // lands on the concrete strip rather than the porch deck above it.
+  if (dVisible) {
+    const walkway = refs.porch?.getObjectByName('porch_walkway') ?? refs.porch;
+    updateCalloutGroupSingle(_drivewayEl, LABEL_TOP_FRAC_BOTTOM, walkway, camera, w, h,
+                             { x: 0, y: 0.1, z: 0 });
+  }
 }
