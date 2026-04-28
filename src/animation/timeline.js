@@ -237,15 +237,17 @@ function buildProcessTitle(tl) {
 
   // Hold
 
-  // Shrink + travel to top of viewport. Bumped up from scale 0.32 / top
-  // 20 px so the small banner is more legible AND has enough margin
-  // above it that the wrapped first line never clips the top edge of
-  // the screen.
+  // Shrink + travel to top-LEFT of viewport. Was top-CENTER; user moved
+  // the persistent banner to the left side. With xPercent: 0 + left:
+  // 20px, the element's top-left corner lands at (20, 50) px so the
+  // three-line block sits in the upper-left bay of the screen.
   tl.to('#process-title', {
     duration: 1.0,
     ease: 'power2.inOut',
     scale: 0.55,
     top: '50px',
+    left: '20px',
+    xPercent: 0,
     yPercent: 0,
   }, PROCESS_TITLE_START + 1.6);
 

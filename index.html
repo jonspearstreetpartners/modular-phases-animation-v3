@@ -120,9 +120,12 @@
       }
       /* The Process title's text is the longest of the three (it includes
          the time-budget + environment line) — give it a tighter desktop
-         font ceiling so the wrapped layout still fits comfortably. */
+         font ceiling so the wrapped layout still fits comfortably. Also
+         left-aligned (the title parks at the top-LEFT for the factory
+         phases, so flush-left lines read cleaner than centered ones). */
       #process-title {
         font-size: clamp(22px, 4vw, 42px);
+        text-align: left;
       }
       @media (max-width: 768px) {
         #process-title {
