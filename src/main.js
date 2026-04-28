@@ -247,12 +247,14 @@ if (DEBUG) {
   controls.enableDamping = true;
   controls.target.set(0, 6, 0);
   setRaw('<span class="stage-num">DEBUG</span> · OrbitControls active');
-} else {
-  setRaw('<span class="stage-num">Phase 3</span> · Timeline ready');
+  gsap.to('#stage-indicator', { opacity: 1, duration: 0.6, delay: 0.2 });
 }
+// In non-DEBUG mode the #stage-indicator stays hidden during the intro
+// (Spear logo + intro title + site-work sections + Process title). It's
+// faded in by the master timeline at STAGE_TIMES.s1, when the first
+// factory-stage announce fires.
 
 // Reveal UI overlays
-gsap.to('#stage-indicator', { opacity: 1, duration: 0.6, delay: 0.2 });
 gsap.to('#brand-tag',       { opacity: 1, duration: 0.6, delay: 0.5 });
 gsap.to('#stage-chips',     { opacity: 1, duration: 0.6, delay: 0.7 });
 gsap.to('#controls',        { opacity: 1, duration: 0.6, delay: 0.8 });
