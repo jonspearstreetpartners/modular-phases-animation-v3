@@ -142,6 +142,15 @@ function buildProcessTitle(tl) {
     scale: 0.32,
     y: () => -(window.innerHeight / 2 - 30),
   }, 4.5);
+
+  // Fade out at the start of Stage 12 (Site Assembly) — the title is no
+  // longer thematically accurate once we leave the factory, and the user
+  // wants the small top-of-screen text gone for the rest of the animation.
+  tl.to('#process-title', {
+    opacity: 0,
+    duration: 0.7,
+    ease: 'power2.in',
+  }, STAGE_TIMES.s12);
 }
 
 /**
@@ -192,6 +201,7 @@ function buildTransportTitle(tl, atStart) {
 function buildFloorCallouts(tl) {
   tl.set('#callout-modules', { opacity: 0 }, 0);
   tl.set('#callout-codes',   { opacity: 0 }, 0);
+  tl.set('#callout-foundation', { opacity: 0 }, 0);
 
   // "Two Modules for One House"
   tl.to('#callout-modules', {
@@ -208,6 +218,16 @@ function buildFloorCallouts(tl) {
   tl.to('#callout-codes', {
     opacity: 0, duration: 0.7, ease: 'power2.in',
   }, STAGE_TIMES.s4 + 2.5);
+
+  // "Permanent Foundation" — Stage 12. Fades in early (foundation is fully
+  // exposed before the lower module descends onto it ~t0+11), then fades
+  // out well before the cross-fade to the photoreal rendering at s12+26.
+  tl.to('#callout-foundation', {
+    opacity: 1, duration: 0.7, ease: 'power2.out',
+  }, STAGE_TIMES.s12 + 0.5);
+  tl.to('#callout-foundation', {
+    opacity: 0, duration: 0.7, ease: 'power2.in',
+  }, STAGE_TIMES.s12 + 8.0);
 }
 
 export function buildTimeline(refs, { paused = true } = {}) {

@@ -84,19 +84,49 @@ function updateCalloutGroup(group, textY, moduleA, moduleB, camera, w, h) {
   dotB.setAttribute('cy', right.y);
 }
 
-let _modulesEl = null;
-let _codesEl   = null;
+// Single-target callout — one leader line + dot pointing at one Object3D.
+function updateCalloutGroupSingle(group, textY, target, camera, w, h, yOffset = 1.0) {
+  if (!group || !target) return;
+
+  target.getWorldPosition(_world);
+  _world.y += yOffset;
+  const p = projectToScreen(_world, camera, w, h);
+
+  const text = group.querySelector('text');
+  text.setAttribute('x', w / 2);
+  text.setAttribute('y', textY);
+
+  // Anchor the leader line at the bottom-center of the text label.
+  let bbox;
+  try { bbox = text.getBBox(); } catch { bbox = { width: 280, height: 22 }; }
+  const lineY = textY + 8;
+
+  const line = group.querySelector('line');
+  const dot  = group.querySelector('circle');
+  line.setAttribute('x1', w / 2);
+  line.setAttribute('y1', lineY);
+  line.setAttribute('x2', p.x);
+  line.setAttribute('y2', p.y);
+  dot.setAttribute('cx', p.x);
+  dot.setAttribute('cy', p.y);
+}
+
+let _modulesEl    = null;
+let _codesEl      = null;
+let _foundationEl = null;
 
 export function updateCallouts(refs, camera, renderer) {
-  if (!_modulesEl) _modulesEl = document.getElementById('callout-modules');
-  if (!_codesEl)   _codesEl   = document.getElementById('callout-codes');
+  if (!_modulesEl)    _modulesEl    = document.getElementById('callout-modules');
+  if (!_codesEl)      _codesEl      = document.getElementById('callout-codes');
+  if (!_foundationEl) _foundationEl = document.getElementById('callout-foundation');
 
-  // Skip work entirely when both groups are invisible — getBBox on SVG and
+  // Skip work entirely when all groups are invisible — getBBox on SVG and
   // matrix multiplies aren't free, and these callouts are only on screen
-  // for ~10 s out of an 80 s animation.
-  const mVisible = _modulesEl && +getComputedStyle(_modulesEl).opacity > 0.001;
-  const cVisible = _codesEl   && +getComputedStyle(_codesEl).opacity   > 0.001;
-  if (!mVisible && !cVisible) return;
+  // for short windows during the animation.
+  const mVisible = _modulesEl    && +getComputedStyle(_modulesEl).opacity    > 0.001;
+  const cVisible = _codesEl      && +getComputedStyle(_codesEl).opacity      > 0.001;
+  const fVisible = _foundationEl && +getComputedStyle(_foundationEl).opacity > 0.001;
+  if (!mVisible && !cVisible && !fVisible) return;
 
   let w = window.innerWidth, h = window.innerHeight;
   if (renderer) {
@@ -106,4 +136,8 @@ export function updateCallouts(refs, camera, renderer) {
 
   if (mVisible) updateCalloutGroup(_modulesEl, h * 0.16, refs.moduleA, refs.moduleB, camera, w, h);
   if (cVisible) updateCalloutGroup(_codesEl,   h * 0.16, refs.moduleA, refs.moduleB, camera, w, h);
+  // Foundation is a flat pad — aim a bit higher on the y axis so the dot
+  // lands on TOP of the slab rather than under it. Label sits a bit lower
+  // (h * 0.22) so it doesn't compete with the brand-tag in the top-right.
+  if (fVisible) updateCalloutGroupSingle(_foundationEl, h * 0.22, refs.foundation, camera, w, h, 0.5);
 }
