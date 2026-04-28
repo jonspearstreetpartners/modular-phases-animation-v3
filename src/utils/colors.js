@@ -26,7 +26,11 @@ export const COLORS = {
   // Exterior — v3 palette tuned to the Champion 05-S30 York, NE rendering
   housewrap:       '#E8EDF2',     // pale blue-gray (under siding, mostly hidden in final)
   siding:          '#94A6B3',     // muted blue-gray lap siding (matches rendering)
-  roofShingle:     '#4D3F35',     // warm dark brown asphalt shingles
+  roofShingle:     '#2F3337',     // dark charcoal asphalt shingles
+                                  // (was '#4D3F35' — that brown read too close
+                                  // to the OSB deck tan, so the shingles
+                                  // looked invisible against the freshly-laid
+                                  // deck.)
   windowGlass:     '#1F2530',     // dark, near-black with subtle reflections
   windowFrame:     '#FFFFFF',     // white trim around windows
   doorWood:        '#A86A3D',     // warm saddle/cinnamon front door (matches rendering)
