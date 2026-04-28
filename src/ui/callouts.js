@@ -49,7 +49,7 @@ const WRAPPED_TEXT = {
   'callout-utilities':         ['Connect water, sewer,', 'gas and electric'],
   'callout-walls':             ['Insulation and', 'Drywall Pre-installed'],
   'callout-roof':              ['Trusses Pre-Assembled', 'Ceiling Drywall Pre-Installed'],
-  'callout-sewer-water':       ['Sewer and Water', 'Connection to Main'],
+  'callout-sewer-water':       ['Sewer and Water', 'Connection to the Street'],
   'callout-foundation-build':  ['Permanent Foundation with', 'Concrete Perimeter Wall'],
   // 'callout-foundation' ("Permanent Foundation") and 'callout-driveway'
   // ("Pour a driveway") are short enough to fit on one line at any size.
@@ -291,12 +291,15 @@ export function updateCallouts(refs, camera, _renderer) {
     updateCalloutGroupSingle(_drivewayEl, LABEL_TOP_FRAC_BOTTOM, walkway, camera, w, h,
                              { x: 0, y: 0.1, z: 0 }, /* leftSide */ true);
   }
-  // Sewer + water callout: Section SW1. Targets one of the trench meshes
-  // so the dot lands on the parallel-pipe area at ground level.
+  // Sewer + water callout: Section SW1. The trenches sit slightly LEFT of
+  // camera center (camera centerX = 30 = SITE_X, trenches at SITE_X - 10).
+  // Place the label MID-LEFT (leftSide = true at LABEL_TOP_FRAC_MID) so
+  // the text sits in the empty band ABOVE the trenches and the leader
+  // line drops a short distance down to the parallel-pipe area below.
   if (swVisible) {
     const trench = refs.sitework?.getObjectByName('sewer_trench') ?? refs.sitework;
-    updateCalloutGroupSingle(_sewerWaterEl, LABEL_TOP_FRAC_BOTTOM, trench, camera, w, h,
-                             { x: 0, y: 0.5, z: 0 });
+    updateCalloutGroupSingle(_sewerWaterEl, LABEL_TOP_FRAC_MID, trench, camera, w, h,
+                             { x: 0, y: 0.5, z: 0 }, /* leftSide */ true);
   }
   // Foundation construction callout: Section SW2. Aim at the perimeter of
   // the foundation, top of wall (~ 0.8 ft = wallH).
