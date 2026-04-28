@@ -157,6 +157,21 @@
       #callouts .callout-dot {
         fill: var(--spear-navy);
       }
+      /* Mobile: shrink the callout text and tighten the leader-line stroke
+         so a long phrase like "Constructed to State Building Codes" (which
+         renders ~400 px wide at 14 px / 1.5 px-letter-spacing) doesn't
+         overflow a 375-px viewport. callouts.js further wraps long phrases
+         into two lines via tspan when window.innerWidth is below the
+         desktop breakpoint. */
+      @media (max-width: 768px) {
+        #callouts .callout-text {
+          font-size: clamp(10px, 3.0vw, 14px);
+          letter-spacing: 0.6px;
+        }
+        #callouts .callout-line {
+          stroke-width: 1.2;
+        }
+      }
 
       /* Brand tag (top-right) */
       #brand-tag {

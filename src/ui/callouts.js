@@ -29,21 +29,82 @@ function projectToScreen(worldPos, camera, w, h) {
 //     circle reference).
 //   - Foundation callout sits near the BOTTOM-right (matched the second
 //     yellow-circle reference).
-const LABEL_RIGHT_FRAC      = 0.97;
-const LABEL_TOP_FRAC_MID    = 0.42;
-const LABEL_TOP_FRAC_BOTTOM = 0.85;
+const LABEL_RIGHT_FRAC_DESKTOP = 0.97;
+const LABEL_RIGHT_FRAC_MOBILE  = 0.94;     // a touch more breathing room on phones
+const LABEL_TOP_FRAC_MID       = 0.42;
+const LABEL_TOP_FRAC_BOTTOM    = 0.85;
+const MOBILE_BREAKPOINT_PX     = 768;
 
-function placeLabel(textEl, w, h, topFrac, rightFrac = LABEL_RIGHT_FRAC) {
+const isMobile = (w) => w <= MOBILE_BREAKPOINT_PX;
+
+// Wrapped versions of the longer callouts, used only when the viewport is
+// below the mobile breakpoint. Each entry is an array of lines that will
+// render stacked (line height ~ 1.15em) via SVG <tspan>.
+const WRAPPED_TEXT = {
+  'callout-modules': ['Two Modules', 'for One House'],
+  'callout-codes':   ['Constructed to State', 'Building Codes'],
+  // 'callout-foundation' is short ("Permanent Foundation") — fits on one
+  // line at any size, no entry needed.
+};
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+// Render a 1- or N-line label inside an SVG <text>. Rebuilds tspan
+// children only when the line content changes — frame-to-frame this
+// usually short-circuits to a no-op or just rewrites the @x attributes
+// (which the user agent may de-dupe internally anyway).
+function setLabelText(textEl, lines, x) {
+  const key = lines.join('|');
+  const sameContent = textEl.dataset.renderedKey === key;
+
+  if (lines.length === 1) {
+    if (sameContent) return;
+    if (textEl.children.length > 0) textEl.replaceChildren();
+    textEl.textContent = lines[0];
+    textEl.dataset.renderedKey = key;
+    return;
+  }
+
+  if (sameContent) {
+    // Lines unchanged — just update @x in case the viewport resized.
+    for (const ts of textEl.children) ts.setAttribute('x', x);
+    return;
+  }
+  textEl.textContent = '';
+  for (let i = 0; i < lines.length; i++) {
+    const ts = document.createElementNS(SVG_NS, 'tspan');
+    ts.setAttribute('x', x);
+    if (i > 0) ts.setAttribute('dy', '1.15em');
+    ts.textContent = lines[i];
+    textEl.appendChild(ts);
+  }
+  textEl.dataset.renderedKey = key;
+}
+
+function placeLabel(textEl, w, h, topFrac) {
+  const mobile = isMobile(w);
+  const rightFrac = mobile ? LABEL_RIGHT_FRAC_MOBILE : LABEL_RIGHT_FRAC_DESKTOP;
   const textX = w * rightFrac;
   const textY = h * topFrac;
   textEl.setAttribute('text-anchor', 'end');
   textEl.setAttribute('x', textX);
   textEl.setAttribute('y', textY);
 
+  // Choose 1- or 2-line rendering based on viewport width and the parent
+  // group's id. Multi-line text is only used on mobile, so on desktop the
+  // single-line branch always runs (idempotent — it just writes the same
+  // textContent each frame).
+  const groupId = textEl.parentElement?.id;
+  const wrapped = mobile && WRAPPED_TEXT[groupId];
+  const single  = !wrapped && (textEl.dataset.fullText || textEl.textContent);
+  if (!textEl.dataset.fullText) textEl.dataset.fullText = single;
+  setLabelText(textEl, wrapped || [textEl.dataset.fullText], textX);
+
   let bbox;
   try { bbox = textEl.getBBox(); } catch { bbox = { x: textX - 280, y: textY - 18, width: 280, height: 22 }; }
 
   return {
+    mobile,
     leftEdgeX: bbox.x,
     midY:      bbox.y + bbox.height / 2,
     topY:      bbox.y + 4,
@@ -68,21 +129,25 @@ function updateCalloutGroup(group, topFrac, moduleA, moduleB, camera, w, h) {
   const place = placeLabel(text, w, h, topFrac);
 
   // Both modules are to the LEFT of the right-side label, so both leader
-  // lines emerge from the LEFT edge of the text. Fork shape: line to the
-  // higher / further module exits from the top-left, line to the closer /
-  // lower module exits from the bottom-left. Use Y-screen position to
-  // decide which is which (small Y = higher on screen = further away).
+  // lines emerge from the LEFT edge of the text. Use Y-screen position to
+  // decide which line points where (small Y = higher on screen = further
+  // away). On desktop the lines fork from top-left / bottom-left of the
+  // text bbox; on mobile (where the bbox is small enough that the fork
+  // points overlap) they collapse to a single V-shape origin at the
+  // left-middle of the bbox.
   const [upper, lower] = a.y <= b.y ? [a, b] : [b, a];
 
   const startX = place.leftEdgeX - 6;          // a hair past the text
   const lineA = group.querySelector('.callout-line-a');
   const lineB = group.querySelector('.callout-line-b');
+  const startYA = place.mobile ? place.midY : place.topY;
+  const startYB = place.mobile ? place.midY : place.botY;
   lineA.setAttribute('x1', startX);
-  lineA.setAttribute('y1', place.topY);
+  lineA.setAttribute('y1', startYA);
   lineA.setAttribute('x2', upper.x);
   lineA.setAttribute('y2', upper.y);
   lineB.setAttribute('x1', startX);
-  lineB.setAttribute('y1', place.botY);
+  lineB.setAttribute('y1', startYB);
   lineB.setAttribute('x2', lower.x);
   lineB.setAttribute('y2', lower.y);
 
@@ -119,7 +184,7 @@ let _modulesEl    = null;
 let _codesEl      = null;
 let _foundationEl = null;
 
-export function updateCallouts(refs, camera, renderer) {
+export function updateCallouts(refs, camera, _renderer) {
   if (!_modulesEl)    _modulesEl    = document.getElementById('callout-modules');
   if (!_codesEl)      _codesEl      = document.getElementById('callout-codes');
   if (!_foundationEl) _foundationEl = document.getElementById('callout-foundation');
@@ -132,11 +197,11 @@ export function updateCallouts(refs, camera, renderer) {
   const fVisible = _foundationEl && +getComputedStyle(_foundationEl).opacity > 0.001;
   if (!mVisible && !cVisible && !fVisible) return;
 
-  let w = window.innerWidth, h = window.innerHeight;
-  if (renderer) {
-    const size = renderer.getSize(new THREE.Vector2());
-    w = size.x; h = size.y;
-  }
+  // SVG overlay uses CSS pixels (no viewBox, width/height = 100%) so we map
+  // NDC -> pixels with the CSS viewport size, NOT the renderer's drawing
+  // buffer (which scales by devicePixelRatio on mobile).
+  const w = window.innerWidth;
+  const h = window.innerHeight;
 
   if (mVisible) updateCalloutGroup(_modulesEl, LABEL_TOP_FRAC_MID, refs.moduleA, refs.moduleB, camera, w, h);
   if (cVisible) updateCalloutGroup(_codesEl,   LABEL_TOP_FRAC_MID, refs.moduleA, refs.moduleB, camera, w, h);
