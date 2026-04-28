@@ -22,19 +22,20 @@ function projectToScreen(worldPos, camera, w, h) {
   };
 }
 
-// Callout label position on screen — right side, ~mid-height, matching the
-// yellow-circle reference position the user supplied. text-anchor="end"
-// means the position is the RIGHT edge of the text, so the text grows
-// leftward and we don't risk overflowing the viewport at any width.
-const LABEL_RIGHT_FRAC = 0.97;     // right edge of text, % from left
-const LABEL_TOP_FRAC   = 0.42;     // baseline Y, % from top
+// Callout label position on screen — right side, anchored by viewport
+// fractions. text-anchor="end" means the position is the RIGHT edge of the
+// text, so the text grows leftward and we don't risk overflowing.
+//   - Floor-stage callouts sit at mid-height (matched the first yellow-
+//     circle reference).
+//   - Foundation callout sits near the BOTTOM-right (matched the second
+//     yellow-circle reference).
+const LABEL_RIGHT_FRAC      = 0.97;
+const LABEL_TOP_FRAC_MID    = 0.42;
+const LABEL_TOP_FRAC_BOTTOM = 0.85;
 
-// Returns { textX, textY, leftEdgeX, topY, botY } for placing the label and
-// figuring out where leader lines should emerge from. textPosX is the
-// position fed to text@x with text-anchor="end".
-function placeLabel(textEl, w, h) {
-  const textX = w * LABEL_RIGHT_FRAC;
-  const textY = h * LABEL_TOP_FRAC;
+function placeLabel(textEl, w, h, topFrac, rightFrac = LABEL_RIGHT_FRAC) {
+  const textX = w * rightFrac;
+  const textY = h * topFrac;
   textEl.setAttribute('text-anchor', 'end');
   textEl.setAttribute('x', textX);
   textEl.setAttribute('y', textY);
@@ -50,7 +51,7 @@ function placeLabel(textEl, w, h) {
   };
 }
 
-function updateCalloutGroup(group, _unused, moduleA, moduleB, camera, w, h) {
+function updateCalloutGroup(group, topFrac, moduleA, moduleB, camera, w, h) {
   if (!group || !moduleA || !moduleB) return;
 
   // Module world position — we offset slightly upward so the leader-line tip
@@ -64,7 +65,7 @@ function updateCalloutGroup(group, _unused, moduleA, moduleB, camera, w, h) {
   const b = projectToScreen(_world, camera, w, h);
 
   const text = group.querySelector('text');
-  const place = placeLabel(text, w, h);
+  const place = placeLabel(text, w, h, topFrac);
 
   // Both modules are to the LEFT of the right-side label, so both leader
   // lines emerge from the LEFT edge of the text. Fork shape: line to the
@@ -94,7 +95,7 @@ function updateCalloutGroup(group, _unused, moduleA, moduleB, camera, w, h) {
 }
 
 // Single-target callout — one leader line + dot pointing at one Object3D.
-function updateCalloutGroupSingle(group, _unused, target, camera, w, h, yOffset = 1.0) {
+function updateCalloutGroupSingle(group, topFrac, target, camera, w, h, yOffset = 1.0) {
   if (!group || !target) return;
 
   target.getWorldPosition(_world);
@@ -102,7 +103,7 @@ function updateCalloutGroupSingle(group, _unused, target, camera, w, h, yOffset 
   const p = projectToScreen(_world, camera, w, h);
 
   const text = group.querySelector('text');
-  const place = placeLabel(text, w, h);
+  const place = placeLabel(text, w, h, topFrac);
 
   const line = group.querySelector('line');
   const dot  = group.querySelector('circle');
@@ -137,10 +138,9 @@ export function updateCallouts(refs, camera, renderer) {
     w = size.x; h = size.y;
   }
 
-  if (mVisible) updateCalloutGroup(_modulesEl, h * 0.16, refs.moduleA, refs.moduleB, camera, w, h);
-  if (cVisible) updateCalloutGroup(_codesEl,   h * 0.16, refs.moduleA, refs.moduleB, camera, w, h);
-  // Foundation is a flat pad — aim a bit higher on the y axis so the dot
-  // lands on TOP of the slab rather than under it. Label sits a bit lower
-  // (h * 0.22) so it doesn't compete with the brand-tag in the top-right.
-  if (fVisible) updateCalloutGroupSingle(_foundationEl, h * 0.22, refs.foundation, camera, w, h, 0.5);
+  if (mVisible) updateCalloutGroup(_modulesEl, LABEL_TOP_FRAC_MID, refs.moduleA, refs.moduleB, camera, w, h);
+  if (cVisible) updateCalloutGroup(_codesEl,   LABEL_TOP_FRAC_MID, refs.moduleA, refs.moduleB, camera, w, h);
+  // Foundation callout sits in the bottom-right — empty space below the
+  // foundation pad, matching the user-supplied yellow-circle reference.
+  if (fVisible) updateCalloutGroupSingle(_foundationEl, LABEL_TOP_FRAC_BOTTOM, refs.foundation, camera, w, h, 0.5);
 }
