@@ -22,26 +22,35 @@ function projectToScreen(worldPos, camera, w, h) {
   };
 }
 
-// Compute the (approximate) anchor points on the bottom edge of a callout's
-// text label — where the two leader lines emerge. Uses getBBox() on the SVG
-// text node so it stays correct as the text wraps or the font scales.
-function textAnchorPoints(textEl, w) {
+// Callout label position on screen — right side, ~mid-height, matching the
+// yellow-circle reference position the user supplied. text-anchor="end"
+// means the position is the RIGHT edge of the text, so the text grows
+// leftward and we don't risk overflowing the viewport at any width.
+const LABEL_RIGHT_FRAC = 0.97;     // right edge of text, % from left
+const LABEL_TOP_FRAC   = 0.42;     // baseline Y, % from top
+
+// Returns { textX, textY, leftEdgeX, topY, botY } for placing the label and
+// figuring out where leader lines should emerge from. textPosX is the
+// position fed to text@x with text-anchor="end".
+function placeLabel(textEl, w, h) {
+  const textX = w * LABEL_RIGHT_FRAC;
+  const textY = h * LABEL_TOP_FRAC;
+  textEl.setAttribute('text-anchor', 'end');
+  textEl.setAttribute('x', textX);
+  textEl.setAttribute('y', textY);
+
   let bbox;
-  try {
-    bbox = textEl.getBBox();
-  } catch {
-    bbox = { width: 280, height: 22 };
-  }
-  const cx = w / 2;                          // text is anchor="middle" at x=50%
-  const halfW = bbox.width / 2;
-  const lineY = parseFloat(textEl.getAttribute('y')) + 8;   // slightly below baseline
+  try { bbox = textEl.getBBox(); } catch { bbox = { x: textX - 280, y: textY - 18, width: 280, height: 22 }; }
+
   return {
-    left:  { x: cx - halfW + 16, y: lineY },
-    right: { x: cx + halfW - 16, y: lineY },
+    leftEdgeX: bbox.x,
+    midY:      bbox.y + bbox.height / 2,
+    topY:      bbox.y + 4,
+    botY:      bbox.y + bbox.height - 2,
   };
 }
 
-function updateCalloutGroup(group, textY, moduleA, moduleB, camera, w, h) {
+function updateCalloutGroup(group, _unused, moduleA, moduleB, camera, w, h) {
   if (!group || !moduleA || !moduleB) return;
 
   // Module world position — we offset slightly upward so the leader-line tip
@@ -55,37 +64,37 @@ function updateCalloutGroup(group, textY, moduleA, moduleB, camera, w, h) {
   const b = projectToScreen(_world, camera, w, h);
 
   const text = group.querySelector('text');
-  text.setAttribute('x', w / 2);
-  text.setAttribute('y', textY);
+  const place = placeLabel(text, w, h);
 
-  const anchors = textAnchorPoints(text, w);
+  // Both modules are to the LEFT of the right-side label, so both leader
+  // lines emerge from the LEFT edge of the text. Fork shape: line to the
+  // higher / further module exits from the top-left, line to the closer /
+  // lower module exits from the bottom-left. Use Y-screen position to
+  // decide which is which (small Y = higher on screen = further away).
+  const [upper, lower] = a.y <= b.y ? [a, b] : [b, a];
 
-  // Two lines: anchor[left] → projected position of whichever module appears
-  // on the LEFT half of the screen; anchor[right] → the RIGHT module.
-  // (Modules can swap sides slightly under camera orbit, so we sort by x.)
-  const [left, right] = a.x <= b.x ? [a, b] : [b, a];
-
+  const startX = place.leftEdgeX - 6;          // a hair past the text
   const lineA = group.querySelector('.callout-line-a');
   const lineB = group.querySelector('.callout-line-b');
-  lineA.setAttribute('x1', anchors.left.x);
-  lineA.setAttribute('y1', anchors.left.y);
-  lineA.setAttribute('x2', left.x);
-  lineA.setAttribute('y2', left.y);
-  lineB.setAttribute('x1', anchors.right.x);
-  lineB.setAttribute('y1', anchors.right.y);
-  lineB.setAttribute('x2', right.x);
-  lineB.setAttribute('y2', right.y);
+  lineA.setAttribute('x1', startX);
+  lineA.setAttribute('y1', place.topY);
+  lineA.setAttribute('x2', upper.x);
+  lineA.setAttribute('y2', upper.y);
+  lineB.setAttribute('x1', startX);
+  lineB.setAttribute('y1', place.botY);
+  lineB.setAttribute('x2', lower.x);
+  lineB.setAttribute('y2', lower.y);
 
   const dotA = group.querySelector('.callout-dot-a');
   const dotB = group.querySelector('.callout-dot-b');
-  dotA.setAttribute('cx', left.x);
-  dotA.setAttribute('cy', left.y);
-  dotB.setAttribute('cx', right.x);
-  dotB.setAttribute('cy', right.y);
+  dotA.setAttribute('cx', upper.x);
+  dotA.setAttribute('cy', upper.y);
+  dotB.setAttribute('cx', lower.x);
+  dotB.setAttribute('cy', lower.y);
 }
 
 // Single-target callout — one leader line + dot pointing at one Object3D.
-function updateCalloutGroupSingle(group, textY, target, camera, w, h, yOffset = 1.0) {
+function updateCalloutGroupSingle(group, _unused, target, camera, w, h, yOffset = 1.0) {
   if (!group || !target) return;
 
   target.getWorldPosition(_world);
@@ -93,18 +102,12 @@ function updateCalloutGroupSingle(group, textY, target, camera, w, h, yOffset = 
   const p = projectToScreen(_world, camera, w, h);
 
   const text = group.querySelector('text');
-  text.setAttribute('x', w / 2);
-  text.setAttribute('y', textY);
-
-  // Anchor the leader line at the bottom-center of the text label.
-  let bbox;
-  try { bbox = text.getBBox(); } catch { bbox = { width: 280, height: 22 }; }
-  const lineY = textY + 8;
+  const place = placeLabel(text, w, h);
 
   const line = group.querySelector('line');
   const dot  = group.querySelector('circle');
-  line.setAttribute('x1', w / 2);
-  line.setAttribute('y1', lineY);
+  line.setAttribute('x1', place.leftEdgeX - 6);
+  line.setAttribute('y1', place.midY);
   line.setAttribute('x2', p.x);
   line.setAttribute('y2', p.y);
   dot.setAttribute('cx', p.x);
