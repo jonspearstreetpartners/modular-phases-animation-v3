@@ -122,7 +122,18 @@ function buildIntro(tl) {
  * scale on top. Final y is computed from viewport size each frame.
  */
 function buildProcessTitle(tl) {
-  tl.set('#process-title', { opacity: 0, scale: 1, x: 0, y: 0 }, 0);
+  // GSAP owns the centering via xPercent/yPercent so the CSS
+  // `transform: translate(-50%, -50%)` baseline is replaced by an explicit
+  // value (otherwise GSAP's transform composition can drift on mobile,
+  // especially when the text wraps onto two lines).
+  tl.set('#process-title', {
+    opacity: 0,
+    scale: 1,
+    xPercent: -50,
+    yPercent: -50,
+    top: '50%',
+    left: '50%',
+  }, 0);
 
   // Fade in centered + large
   tl.to('#process-title', {
@@ -134,13 +145,16 @@ function buildProcessTitle(tl) {
   // Hold (3.0 → 4.5)
 
   // Shrink + travel to top of viewport (4.5 → 5.5).
-  // Scale 0.32 matches the corner-logo size ratio. y target places the
-  // scaled text ~24 px from the top of the viewport.
+  // Animate top: 50% -> 20px and yPercent: -50 -> 0, so the element's TOP
+  // edge ends at 20 px regardless of viewport size or text wrapping. This
+  // is more robust than computing a one-shot pixel translation, which
+  // becomes wrong if the mobile URL bar collapses mid-animation.
   tl.to('#process-title', {
     duration: 1.0,
     ease: 'power2.inOut',
     scale: 0.32,
-    y: () => -(window.innerHeight / 2 - 30),
+    top: '20px',
+    yPercent: 0,
   }, 4.5);
 
   // Fade out at the start of Stage 11 (Transport) — the title is no longer

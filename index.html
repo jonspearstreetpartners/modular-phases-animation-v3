@@ -113,9 +113,15 @@
         line-height: 1.15;
       }
       @media (max-width: 768px) {
+        /* On mobile the process-title would overflow horizontally on a
+           single line (~470 px wide at 36 px / 1 px-letter-spacing vs a
+           375 px viewport), so we allow wrapping and constrain width. */
         #process-title {
-          font-size: clamp(20px, 6.5vw, 38px);
-          letter-spacing: 1px;
+          white-space: normal;
+          max-width: 88vw;
+          line-height: 1.15;
+          font-size: clamp(18px, 5.5vw, 30px);
+          letter-spacing: 0.8px;
         }
         #transport-title {
           font-size: clamp(20px, 5.5vw, 36px);
