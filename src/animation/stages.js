@@ -345,21 +345,23 @@ export function stageRoof(tl, refs, t0) {
       }, at);
     });
 
-    // 5) Hide the underlying truss FRAMING (chords, king-posts, rafters)
-    //    once the shingles are fully placed. The shingle slabs are the
-    //    visible finish from now on; the freshly-laid decking sits just
-    //    beneath them and stays visible through the eaves. Ceiling drywall
-    //    stays visible too — it's the room ceiling, reads correctly through
-    //    any future interior reveals. Per-mesh by name (vs. hiding the
-    //    Roof_static group) so the ceiling drywall isn't caught up in the
-    //    visibility kill.
+    // 5) Once the shingles are fully placed, hide everything they cover so
+    //    the roof reads as a clean shingled surface from every camera angle.
+    //    - Truss FRAMING (chords, king-posts, rafters) — would peek through
+    //      from the gable angle.
+    //    - DECKING — was bleeding tan through the shingles at edge / coincident
+    //      faces despite a SLAB_GAP offset; once the shingles are in place
+    //      the deck is fully covered from above anyway, so just hide it.
+    //    Ceiling drywall stays visible (it's the room ceiling). Per-mesh by
+    //    name so the ceiling drywall isn't caught up in the visibility kill.
     const slabFinishedAt = t0 + SHINGLE_AT_BASE + Math.max(0, slabs.length - 1) * SHINGLE_STAGGER + SHINGLE_DROP_DUR;
     m.traverse((o) => {
       if (!o.name) return;
       if (o.name.startsWith('chord_') ||
           o.name.startsWith('kingpost_') ||
           o.name.startsWith('rafter_west_') ||
-          o.name.startsWith('rafter_east_')) {
+          o.name.startsWith('rafter_east_') ||
+          o.name.startsWith('roof_deck')) {
         tl.set(o, { visible: false }, slabFinishedAt);
       }
     });
