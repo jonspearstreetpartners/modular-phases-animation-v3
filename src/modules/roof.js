@@ -188,12 +188,16 @@ export function buildModuleRoof({ side = 'roof' } = {}) {
     return deck;
   };
 
+  // Tiny gap between deck top face and slab bottom face — they otherwise
+  // share an identical Y in geometry-local coords and end up coincident
+  // after the rotZ rotation, which Z-fights badly and lets the deck's tan
+  // show through the shingles. ~1/8 in is enough to win cleanly.
+  const SLAB_GAP = 0.01;
+
   const buildSlab = (rotZ, name) => {
     const geo = new THREE.BoxGeometry(rafterLen, slabT, L * 1.04);
     geo.translate(rafterLen / 2, 0, 0);
-    // Sit ABOVE the decking layer (deckT) so the shingle slabs can later
-    // drop into place on top of the freshly-laid deck without Z-fighting.
-    geo.translate(0, chordH + deckT + slabT / 2, 0);
+    geo.translate(0, chordH + deckT + SLAB_GAP + slabT / 2, 0);
     const slab = new THREE.Mesh(geo, slabMat);
     slab.position.set(0, chordH, 0);
     slab.rotation.z = rotZ;
