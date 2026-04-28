@@ -176,13 +176,22 @@ export function buildModuleRoof({ side = 'roof' } = {}) {
   const deckT   = 0.05;            // ~5/8 in plywood/OSB
   const slabT   = 0.08;            // shingle layer
 
-  const buildDeck = (rotZ, name) => {
+  // east = +1 builds the slab/deck for the WEST hinge (geometry X range
+  // [0, rafterLen], rotation +rafterAngle). east = -1 builds for the EAST
+  // hinge as a true mirror: geometry X range [-rafterLen, 0], rotation
+  // -rafterAngle. The east hinge then folds with the matching +rafterAngle
+  // and the slab lands flat above the chord (world rotation = 0). The
+  // earlier setup used rotation = π - rafterAngle for the east, which
+  // worked on the slope but left the slab UPSIDE-DOWN below the wall
+  // plate after the Stage 11 transport fold (gray ceiling drywall showed
+  // through the missing east slab).
+  const buildDeck = (eastSign, name) => {
     const geo = new THREE.BoxGeometry(rafterLen, deckT, L * 1.04);
-    geo.translate(rafterLen / 2, 0, 0);              // anchor at -X end (eave)
+    geo.translate(eastSign * rafterLen / 2, 0, 0);   // anchor at the eave end
     geo.translate(0, chordH + deckT / 2, 0);         // sit just on top of rafter
     const deck = new THREE.Mesh(geo, deckingMat());
     deck.position.set(0, chordH, 0);
-    deck.rotation.z = rotZ;
+    deck.rotation.z = eastSign * rafterAngle;
     deck.castShadow = deck.receiveShadow = true;
     deck.name = name;
     return deck;
@@ -190,26 +199,26 @@ export function buildModuleRoof({ side = 'roof' } = {}) {
 
   // Tiny gap between deck top face and slab bottom face — they otherwise
   // share an identical Y in geometry-local coords and end up coincident
-  // after the rotZ rotation, which Z-fights badly and lets the deck's tan
-  // show through the shingles. ~1/8 in is enough to win cleanly.
+  // after the rotation, which Z-fights badly and lets the deck's tan show
+  // through the shingles. ~1/8 in is enough to win cleanly.
   const SLAB_GAP = 0.01;
 
-  const buildSlab = (rotZ, name) => {
+  const buildSlab = (eastSign, name) => {
     const geo = new THREE.BoxGeometry(rafterLen, slabT, L * 1.04);
-    geo.translate(rafterLen / 2, 0, 0);
+    geo.translate(eastSign * rafterLen / 2, 0, 0);
     geo.translate(0, chordH + deckT + SLAB_GAP + slabT / 2, 0);
     const slab = new THREE.Mesh(geo, slabMat);
     slab.position.set(0, chordH, 0);
-    slab.rotation.z = rotZ;
+    slab.rotation.z = eastSign * rafterAngle;
     slab.castShadow = slab.receiveShadow = true;
     slab.name = name;
     return slab;
   };
 
-  hingeWest.add(buildDeck(+rafterAngle,            'roof_deck_west'));
-  hingeWest.add(buildSlab(+rafterAngle,            'roof_slab_west'));
-  hingeEast.add(buildDeck(Math.PI - rafterAngle,   'roof_deck_east'));
-  hingeEast.add(buildSlab(Math.PI - rafterAngle,   'roof_slab_east'));
+  hingeWest.add(buildDeck(+1, 'roof_deck_west'));
+  hingeWest.add(buildSlab(+1, 'roof_slab_west'));
+  hingeEast.add(buildDeck(-1, 'roof_deck_east'));
+  hingeEast.add(buildSlab(-1, 'roof_slab_east'));
 
   // --- GABLE-END WALLS (triangular fills closing off +Z and -Z gable ends) ---
   // Without these, the front and back of the gable have empty triangles between
