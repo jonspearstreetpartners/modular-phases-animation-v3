@@ -1,20 +1,22 @@
 // Master timeline composer. Calls each stage function with its start time.
 //
-// v3 timeline order (~80 s total, includes intro):
-//   0a. Spear logo intro                  (0.0 → 2.5)   large logo shrinks to top-right
-//   0b. Process title                     (2.5 → 6.0)   large centered title shrinks to top
-//   1. Floor system & module base         (6.0 → 11.5)
-//   2. Floor MEP rough-in                 (8.0 → 11.5)
-//   3. Subfloor deck                      (11.5 → 14.5)
-//   4. Subfloor MEP & fixtures            (14.5 → 18.5)
-//   5. Wall framing (HERO)                (18.5 → 25.0)
-//   6. MEP rough-in (in-wall)             (25.0 → 30.0)
-//   7. Insulation                         (30.0 → 34.0)
-//   8. Roof framing                       (34.0 → 39.5)
-//   9. Windows, exterior finish & roof    (39.5 → 44.5)
-//  10. Interior reveal                    (44.5 → 49.5)
-//  11. Transport (compressed)             (49.5 → 55.5)
-//  12. Site stacking + porch              (55.5 → 76.5)
+// v3 timeline order (times shown are RELATIVE to construction-start; add
+// INTRO_DURATION for absolute master-timeline times):
+//   0a. Spear logo intro                  (-6.0 → -3.5)
+//   0b. Process title                     (-3.5 →  0.0)
+//   1. Floor system & module base         ( 0.0 →  5.5)
+//   2. Floor MEP rough-in                 ( 5.5 →  9.0)
+//   3. Subfloor deck                      ( 9.0 → 12.0)
+//   4. Subfloor MEP & fixtures            (12.0 → 16.0)
+//   5. Wall framing (HERO)                (16.0 → 22.5)
+//   6. MEP rough-in (in-wall)             (22.5 → 27.5)
+//   7. Insulation                         (27.5 → 31.5)
+//   8. Roof framing                       (31.5 → 37.0)
+//   9. Windows, exterior finish & roof    (37.0 → 42.0)
+//  10. Interior reveal                    (42.0 → 47.0)
+//  11. Transport (compressed)             (47.0 → 53.0)
+//  11b. Transport title (fade in/out)    (53.0 → 56.5)
+//  12. Site stacking + porch              (56.5 → 77.5)
 
 import gsap from 'gsap';
 import {
@@ -40,12 +42,16 @@ export const STAGE_TIMES = {
   s9:  INTRO_DURATION + 37.0,
   s10: INTRO_DURATION + 42.0,
   s11: INTRO_DURATION + 47.0,
-  s12: INTRO_DURATION + 53.0,
+  // 3.5 s gap between transport (s11 ends ~53) and site assembly (s12)
+  // for the transport-title fade in/hold/fade-out. Site assembly stage
+  // therefore starts 3.5 s later than before; everything downstream
+  // (head-on shot, cross-fade, end marker) shifts by the same amount.
+  s12: INTRO_DURATION + 56.5,
   // Stage 12 effectively completes ~21 s in (porch reveal ends). End is
   // pushed past that to accommodate (a) the head-on hold (~3 s),
   // (b) the cross-fade to the photoreal rendering, and (c) the audio
   // fade-out which now starts at s12 + 27.5 and runs 4 s.
-  end: INTRO_DURATION + 86.0,
+  end: INTRO_DURATION + 89.5,
 };
 
 /**
@@ -138,12 +144,45 @@ function buildProcessTitle(tl) {
   }, 4.5);
 }
 
+/**
+ * Transport title — fades in between Stage 11 (transport) and Stage 12
+ * (site assembly), explaining what's happening. Same large centered
+ * style as the process title; this one stays put (no travel) and fades
+ * away again before the trucks arrive on site.
+ *
+ *   atStart + 0.0 → 0.6   fade in
+ *   atStart + 0.6 → 2.7   hold (read it)
+ *   atStart + 2.7 → 3.3   fade out
+ *
+ * Total budget: 3.3 s. The 3.5 s gap baked into STAGE_TIMES.s12 leaves
+ * a 0.2 s buffer before site assembly begins.
+ */
+function buildTransportTitle(tl, atStart) {
+  tl.set('#transport-title', { opacity: 0 }, 0);
+
+  tl.to('#transport-title', {
+    opacity: 1,
+    duration: 0.6,
+    ease: 'power2.out',
+  }, atStart);
+
+  tl.to('#transport-title', {
+    opacity: 0,
+    duration: 0.6,
+    ease: 'power2.in',
+  }, atStart + 2.7);
+}
+
 export function buildTimeline(refs, { paused = true } = {}) {
   const tl = gsap.timeline({ paused, defaults: { overwrite: 'auto' } });
 
   // Intro overlay (0 → INTRO_DURATION)
   buildIntro(tl);
   buildProcessTitle(tl);
+
+  // Transport title — fades in/out in the 3.5 s gap between s11 and s12.
+  // Master-timeline start time = INTRO_DURATION + 53.0 (= end of transport).
+  buildTransportTitle(tl, INTRO_DURATION + 53.0);
 
   stageFloor(             tl, refs, STAGE_TIMES.s1);
   stageFloorMEP(          tl, refs, STAGE_TIMES.s2);

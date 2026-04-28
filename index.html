@@ -84,8 +84,12 @@
          top-right corner. Starts huge + centered, then shrinks and travels
          up to the top of the viewport where it stays for the rest of the
          animation. Same transform-origin trick as #intro-logo: CSS rest is
-         centered with translate(-50%, -50%); GSAP animates x/y/scale on top. */
-      #process-title {
+         centered with translate(-50%, -50%); GSAP animates x/y/scale on top.
+         #transport-title uses the same large centered styling but stays put
+         (no travel) — it just fades in, holds, and fades back out between
+         the transport and site-assembly stages. */
+      #process-title,
+      #transport-title {
         position: absolute;
         top: 50%;
         left: 50%;
@@ -100,11 +104,21 @@
         letter-spacing: 1.5px;
         text-align: center;
         text-transform: uppercase;
-        white-space: nowrap;
+      }
+      #process-title { white-space: nowrap; }
+      /* Transport title is a longer sentence — allow wrapping with a max
+         width so it stays readable on narrow viewports. */
+      #transport-title {
+        max-width: 80vw;
+        line-height: 1.15;
       }
       @media (max-width: 768px) {
         #process-title {
           font-size: clamp(20px, 6.5vw, 38px);
+          letter-spacing: 1px;
+        }
+        #transport-title {
+          font-size: clamp(20px, 5.5vw, 36px);
           letter-spacing: 1px;
         }
       }
@@ -542,6 +556,10 @@
       <!-- Process title: fades in centered after the Spear intro, then travels
            to the top of the screen and remains there in small font. -->
       <div id="process-title">Modular Construction Factory Process</div>
+
+      <!-- Transport title: fades in / out between the transport and site-
+           assembly stages, briefly explaining what happens next. -->
+      <div id="transport-title">The two modules are taken to the site to be installed on the property</div>
 
       <!-- Stage chips: click to jump directly to a phase -->
       <div id="stage-chips"></div>

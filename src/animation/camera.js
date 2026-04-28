@@ -107,9 +107,11 @@ export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0,
     elevation:   36,
   }, 42.0, 10.0, 'power1.inOut');
 
-  // 75 – 78: FRONT-ON CLOSE-IN SHOT of the assembled home at SITE_X = +30.
+  // 78.5 – 80.5: FRONT-ON CLOSE-IN SHOT of the assembled home at SITE_X = +30.
   // Lands at the end of Stage 12 (outro) so the porch reveal, landscape
   // grow, and outro logo all play against this close shot of the home.
+  // (Pushed back 3.5 s from the previous t=75 to accommodate the
+  // transport-title fade-in/out that now sits between s11 and s12.)
   move({
     centerX:     30,
     centerY:     10,
@@ -118,14 +120,14 @@ export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0,
     distance:    35,
     elevation:   14,
     frustumSize: 35,
-  }, 75.0, 2.0, 'power2.inOut');         // 1 s faster than before
+  }, 78.5, 2.0, 'power2.inOut');         // 1 s faster than before
 
   // Toggle the directional key light's shadow casting at the head-on shot.
-  // OFF at t=75 (start of head-on) so no hard shadow falls across the front
-  // gable. ON at t=0 so REPLAY restores shadows for the rest of the
-  // animation.
+  // OFF at the start of the head-on so no hard shadow falls across the
+  // front gable. ON at t=0 so REPLAY restores shadows for the rest of
+  // the animation.
   if (lights && lights.key) {
     tl.call(() => { lights.key.castShadow = true;  }, null, startTime + 0.0);
-    tl.call(() => { lights.key.castShadow = false; }, null, startTime + 75.0);
+    tl.call(() => { lights.key.castShadow = false; }, null, startTime + 78.5);
   }
 }
