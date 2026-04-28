@@ -200,6 +200,13 @@
       #callouts .callout-dot {
         fill: var(--spear-navy);
       }
+      /* Roof-trusses callout is text-only — no leader line / dot. The
+         label stands alone at the top of the screen during the truss
+         drop, so the user reads it as a banner rather than a pointer. */
+      #callouts #callout-roof line,
+      #callouts #callout-roof circle {
+        display: none;
+      }
       /* Mobile: shrink the callout text and tighten the leader-line stroke
          so a long phrase like "Constructed to State Building Codes" (which
          renders ~400 px wide at 14 px / 1.5 px-letter-spacing) doesn't
