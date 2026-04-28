@@ -51,6 +51,7 @@ const WRAPPED_TEXT = {
   'callout-roof':              ['Trusses Pre-Assembled', 'Ceiling Drywall Pre-Installed'],
   'callout-sewer-water':       ['Sewer and Water', 'Connection to the Street'],
   'callout-foundation-build':  ['Permanent Foundation with', 'Concrete Perimeter Wall'],
+  'callout-roof-fold':         ['Hinged Roof lowers', 'for Transport'],
   // 'callout-foundation' ("Permanent Foundation") and 'callout-driveway'
   // ("Pour a driveway") are short enough to fit on one line at any size.
 };
@@ -226,6 +227,7 @@ let _roofEl        = null;
 let _drivewayEl    = null;
 let _sewerWaterEl  = null;
 let _foundBuildEl  = null;
+let _roofFoldEl    = null;
 
 export function updateCallouts(refs, camera, _renderer) {
   if (!_modulesEl)     _modulesEl     = document.getElementById('callout-modules');
@@ -237,6 +239,7 @@ export function updateCallouts(refs, camera, _renderer) {
   if (!_drivewayEl)    _drivewayEl    = document.getElementById('callout-driveway');
   if (!_sewerWaterEl)  _sewerWaterEl  = document.getElementById('callout-sewer-water');
   if (!_foundBuildEl)  _foundBuildEl  = document.getElementById('callout-foundation-build');
+  if (!_roofFoldEl)    _roofFoldEl    = document.getElementById('callout-roof-fold');
 
   // Skip work entirely when all groups are invisible — getBBox on SVG and
   // matrix multiplies aren't free, and these callouts are only on screen
@@ -250,8 +253,9 @@ export function updateCallouts(refs, camera, _renderer) {
   const dVisible  = _drivewayEl    && +getComputedStyle(_drivewayEl).opacity    > 0.001;
   const swVisible = _sewerWaterEl  && +getComputedStyle(_sewerWaterEl).opacity  > 0.001;
   const fbVisible = _foundBuildEl  && +getComputedStyle(_foundBuildEl).opacity  > 0.001;
+  const rfVisible = _roofFoldEl    && +getComputedStyle(_roofFoldEl).opacity    > 0.001;
   if (!mVisible && !cVisible && !fVisible && !uVisible &&
-      !wVisible && !rVisible && !dVisible && !swVisible && !fbVisible) return;
+      !wVisible && !rVisible && !dVisible && !swVisible && !fbVisible && !rfVisible) return;
 
   // SVG overlay uses CSS pixels (no viewBox, width/height = 100%) so we map
   // NDC -> pixels with the CSS viewport size, NOT the renderer's drawing
@@ -285,14 +289,15 @@ export function updateCallouts(refs, camera, _renderer) {
   // of module B so the leader line stays clear of the trusses.
   if (rVisible) updateCalloutGroupSingle(_roofEl,       LABEL_TOP_FRAC_HIGH,   refs.moduleB,   camera, w, h,
                                          { x: 14, y: 13, z: 0 });
-  // Driveway callout: late Stage 12. Moved to the LEFT side of the
-  // viewport per user request (was overlapping the bottom-right
-  // utilities callout). Targets the porch_walkway mesh so the dot
-  // lands on the concrete strip.
+  // Driveway callout: late Stage 12. Per user request, moved BACK to the
+  // RIGHT side (closer to the house, which sits in the right half of the
+  // screen). Timing in timeline.js is staggered so this only fires AFTER
+  // the utilities callout has faded out — both can share the bottom-right
+  // slot without temporal overlap.
   if (dVisible) {
     const walkway = refs.porch?.getObjectByName('porch_walkway') ?? refs.porch;
     updateCalloutGroupSingle(_drivewayEl, LABEL_TOP_FRAC_BOTTOM, walkway, camera, w, h,
-                             { x: 0, y: 0.1, z: 0 }, /* leftSide */ true);
+                             { x: 0, y: 0.1, z: 0 });
   }
   // Sewer + water callout: Section SW1. The trenches sit slightly LEFT of
   // camera center (camera centerX = 30 = SITE_X, trenches at SITE_X - 10).
@@ -309,5 +314,12 @@ export function updateCallouts(refs, camera, _renderer) {
   if (fbVisible) {
     updateCalloutGroupSingle(_foundBuildEl, LABEL_TOP_FRAC_MID, refs.foundation, camera, w, h,
                              { x: 0, y: 0.8, z: 0 });
+  }
+  // Roof-fold callout: Stage 11 (Transport). Points at module B's roof
+  // peak as the rafter hinges fold flat. Label sits in the upper-right
+  // band so the leader line drops down to the roof from above.
+  if (rfVisible) {
+    updateCalloutGroupSingle(_roofFoldEl, LABEL_TOP_FRAC_HIGH, refs.moduleB, camera, w, h,
+                             { x: 0, y: 12, z: 0 });
   }
 }

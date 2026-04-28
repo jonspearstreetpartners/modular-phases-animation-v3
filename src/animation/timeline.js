@@ -276,6 +276,7 @@ function buildFloorCallouts(tl) {
   tl.set('#callout-driveway',          { opacity: 0 }, 0);
   tl.set('#callout-sewer-water',       { opacity: 0 }, 0);
   tl.set('#callout-foundation-build',  { opacity: 0 }, 0);
+  tl.set('#callout-roof-fold',         { opacity: 0 }, 0);
 
   // "Two Modules for One House"
   tl.to('#callout-modules', {
@@ -305,14 +306,14 @@ function buildFloorCallouts(tl) {
 
   // "Connect water, sewer, gas and electric" — late Stage 12, after the
   // upper module is stacked and the crane has driven away (~s12 + 16.5).
-  // Holds through the porch reveal and fades out before the walkway-
-  // driveway callout takes the same screen position.
+  // Tightened end time so the bottom-right slot is free by s12 + 18.5
+  // for the "Pour a driveway" callout to take it.
   tl.to('#callout-utilities', {
     opacity: 1, duration: 0.7, ease: 'power2.out',
   }, STAGE_TIMES.s12 + 16.5);
   tl.to('#callout-utilities', {
     opacity: 0, duration: 0.7, ease: 'power2.in',
-  }, STAGE_TIMES.s12 + 19.5);
+  }, STAGE_TIMES.s12 + 18.5);
 
   // "Insulation and Drywall Pre-installed" — Stage 5 (Walls). Walls slide
   // in 0 → 2.7 s into the stage; fade in once a couple are settled.
@@ -334,15 +335,16 @@ function buildFloorCallouts(tl) {
     opacity: 0, duration: 0.7, ease: 'power2.in',
   }, STAGE_TIMES.s8 + 4.7);
 
-  // "Pour a driveway" — late Stage 12. Walkway mesh appears at the tail
-  // of the porch reveal (~s12 + 18.6, six tiers in at 0.35 s each from
-  // s12 + 16.5). Fade in slightly before that and hold for ~2 s.
+  // "Pour a driveway" — fires AFTER the utilities callout has finished
+  // its fade-out (utilities fade-out completes at s12 + 19.2). Driveway
+  // and utilities now both share the bottom-right slot but are temporally
+  // disjoint, so the user reads each in turn.
   tl.to('#callout-driveway', {
     opacity: 1, duration: 0.7, ease: 'power2.out',
-  }, STAGE_TIMES.s12 + 18.0);
+  }, STAGE_TIMES.s12 + 19.4);
   tl.to('#callout-driveway', {
     opacity: 0, duration: 0.7, ease: 'power2.in',
-  }, STAGE_TIMES.s12 + 21.0);
+  }, STAGE_TIMES.s12 + 21.5);
 
   // "Sewer and Water Connection to Main" — Section SW1 (master 5.9 → 12.5).
   // Fade in once the sewer trench has dug + pipe is going in, hold past
@@ -365,6 +367,16 @@ function buildFloorCallouts(tl) {
   tl.to('#callout-foundation-build', {
     opacity: 0, duration: 0.7, ease: 'power2.in',
   }, SITEWORK_TIMES.sw_end - 1.5);
+
+  // "Hinged Roof lowers for Transport" — Stage 11 (Transport). Roof
+  // hinges fold from t0 + 0.1 → t0 + 1.1 (1 s ease-in-out). Fade the
+  // callout in just before the fold starts and out after it completes.
+  tl.to('#callout-roof-fold', {
+    opacity: 1, duration: 0.6, ease: 'power2.out',
+  }, STAGE_TIMES.s11);
+  tl.to('#callout-roof-fold', {
+    opacity: 0, duration: 0.6, ease: 'power2.in',
+  }, STAGE_TIMES.s11 + 2.2);
 }
 
 export function buildTimeline(refs, { paused = true } = {}) {
