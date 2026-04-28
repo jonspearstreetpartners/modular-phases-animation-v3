@@ -402,10 +402,8 @@
         align-items: center;
         justify-content: center;
       }
-      /* Inner wrapper around the image so we can position child overlays
-         (like the York, NE cover) RELATIVE to the image, not the viewport.
-         The wrapper auto-sizes to the image because it has display:inline-block
-         with no width set. */
+      /* Inner wrapper around the image. display:inline-block so it auto-sizes
+         to the image dimensions, allowing the box-shadow to hug the image. */
       #final-rendering-inner {
         position: relative;
         display: inline-block;
@@ -426,20 +424,6 @@
         #final-rendering-inner,
         #final-rendering { max-width: 92vw; max-height: 70vh; }
       }
-      /* Sky-colored cover over the "York, NE" text in the rendering's upper
-         right. Sized in % of the rendering so it scales with the image at
-         any viewport size. Position tuned visually: the text sits roughly
-         at right 4-15%, top 5-11% of the rendering. */
-      #york-cover {
-        position: absolute;
-        top: 4%;
-        right: 2%;
-        width: 16%;
-        height: 8%;
-        background: #C9D7DD;            /* matches the pale upper sky in the rendering */
-        pointer-events: none;
-      }
-
       /* Start-with-sound overlay (shown until user clicks; required by browsers
          to satisfy the autoplay-with-sound policy). */
       #start-overlay {
@@ -501,8 +485,6 @@
       <div id="final-rendering-wrap">
         <div id="final-rendering-inner">
           <img id="final-rendering" src="/final-rendering.png" alt="" />
-          <!-- Sky-colored cover over the "York, NE" text in the upper-right. -->
-          <div id="york-cover"></div>
         </div>
       </div>
 
