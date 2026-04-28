@@ -12,6 +12,7 @@ import { buildOrthoCamera, updateOrthoFrustum } from './scene/camera.js';
 import { buildGround } from './scene/ground.js';
 import { configureRenderer } from './scene/environment.js';
 import { setRaw, show as showStage } from './ui/stageLabel.js';
+import { updateCallouts } from './ui/callouts.js';
 
 import { MODULE_LOWER, MODULE_UPPER } from './utils/dimensions.js';
 import { buildModuleFloorFrame, buildModuleSubfloor } from './modules/floor.js';
@@ -747,6 +748,7 @@ function tick() {
   // the hook is animating. updateCraneCables is a no-op when crane is hidden.
   updateCraneCables(crane);
   renderer.render(scene, camera);
+  updateCallouts(refs, camera, renderer);
   updateTimeUI();
   setBtnLabel();
   requestAnimationFrame(tick);

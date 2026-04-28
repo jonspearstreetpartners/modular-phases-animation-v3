@@ -173,6 +173,43 @@ function buildTransportTitle(tl, atStart) {
   }, atStart + 2.7);
 }
 
+/**
+ * Floor-stage callouts — two SVG label groups in #callouts that point at
+ * the two factory modules with leader lines. Visibility is opacity only;
+ * positions are recomputed each frame in main.js tick() via updateCallouts.
+ *
+ *   "Two Modules for One House"        fades in mid-Stage 1 (floor frame),
+ *                                       fades out at the start of Stage 2.
+ *   "Constructed to State Building Codes"
+ *                                       fades in early Stage 3 (subfloor),
+ *                                       holds through most of Stage 4
+ *                                       (subfloor MEP / fixtures), fades
+ *                                       out late in Stage 4.
+ *
+ * Hardcoded fade durations (0.7 s) match the rest of the title transitions
+ * for visual consistency.
+ */
+function buildFloorCallouts(tl) {
+  tl.set('#callout-modules', { opacity: 0 }, 0);
+  tl.set('#callout-codes',   { opacity: 0 }, 0);
+
+  // "Two Modules for One House"
+  tl.to('#callout-modules', {
+    opacity: 1, duration: 0.7, ease: 'power2.out',
+  }, STAGE_TIMES.s1 + 1.0);
+  tl.to('#callout-modules', {
+    opacity: 0, duration: 0.7, ease: 'power2.in',
+  }, STAGE_TIMES.s2 + 0.3);
+
+  // "Constructed to State Building Codes"
+  tl.to('#callout-codes', {
+    opacity: 1, duration: 0.7, ease: 'power2.out',
+  }, STAGE_TIMES.s3 + 0.3);
+  tl.to('#callout-codes', {
+    opacity: 0, duration: 0.7, ease: 'power2.in',
+  }, STAGE_TIMES.s4 + 2.5);
+}
+
 export function buildTimeline(refs, { paused = true } = {}) {
   const tl = gsap.timeline({ paused, defaults: { overwrite: 'auto' } });
 
@@ -183,6 +220,9 @@ export function buildTimeline(refs, { paused = true } = {}) {
   // Transport title — fades in/out in the 3.5 s gap between s11 and s12.
   // Master-timeline start time = INTRO_DURATION + 53.0 (= end of transport).
   buildTransportTitle(tl, INTRO_DURATION + 53.0);
+
+  // Floor-stage callouts (two SVG groups with leader lines, see #callouts)
+  buildFloorCallouts(tl);
 
   stageFloor(             tl, refs, STAGE_TIMES.s1);
   stageFloorMEP(          tl, refs, STAGE_TIMES.s2);
