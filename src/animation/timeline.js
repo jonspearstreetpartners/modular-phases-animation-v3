@@ -277,6 +277,7 @@ function buildFloorCallouts(tl) {
   tl.set('#callout-sewer-water',       { opacity: 0 }, 0);
   tl.set('#callout-foundation-build',  { opacity: 0 }, 0);
   tl.set('#callout-roof-fold',         { opacity: 0 }, 0);
+  tl.set('#callout-house-set',         { opacity: 0 }, 0);
 
   // "Two Modules for One House"
   tl.to('#callout-modules', {
@@ -377,6 +378,19 @@ function buildFloorCallouts(tl) {
   tl.to('#callout-roof-fold', {
     opacity: 0, duration: 0.6, ease: 'power2.in',
   }, STAGE_TIMES.s11 + 2.2);
+
+  // "House Set on Foundation by Crane" — text-only HEADER for Stage 12
+  // site assembly. Visible while the crane is doing its work: starts
+  // fading in as the crane drives onto the site (~s12 + 5) and fades
+  // back out shortly after the upper module lands on the lower (~s12 +
+  // 16) — well before the porch reveal so the next callouts can take
+  // over the screen.
+  tl.to('#callout-house-set', {
+    opacity: 1, duration: 0.7, ease: 'power2.out',
+  }, STAGE_TIMES.s12 + 5.0);
+  tl.to('#callout-house-set', {
+    opacity: 0, duration: 0.7, ease: 'power2.in',
+  }, STAGE_TIMES.s12 + 16.0);
 }
 
 export function buildTimeline(refs, { paused = true } = {}) {

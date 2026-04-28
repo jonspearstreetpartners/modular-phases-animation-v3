@@ -52,6 +52,7 @@ const WRAPPED_TEXT = {
   'callout-sewer-water':       ['Sewer and Water', 'Connection to the Street'],
   'callout-foundation-build':  ['Permanent Foundation with', 'Concrete Perimeter Wall'],
   'callout-roof-fold':         ['Hinged Roof lowers', 'for Transport'],
+  'callout-house-set':         ['House Set on Foundation', 'by Crane'],
   // 'callout-foundation' ("Permanent Foundation") and 'callout-driveway'
   // ("Pour a driveway") are short enough to fit on one line at any size.
 };
@@ -228,6 +229,7 @@ let _drivewayEl    = null;
 let _sewerWaterEl  = null;
 let _foundBuildEl  = null;
 let _roofFoldEl    = null;
+let _houseSetEl    = null;
 
 export function updateCallouts(refs, camera, _renderer) {
   if (!_modulesEl)     _modulesEl     = document.getElementById('callout-modules');
@@ -240,6 +242,7 @@ export function updateCallouts(refs, camera, _renderer) {
   if (!_sewerWaterEl)  _sewerWaterEl  = document.getElementById('callout-sewer-water');
   if (!_foundBuildEl)  _foundBuildEl  = document.getElementById('callout-foundation-build');
   if (!_roofFoldEl)    _roofFoldEl    = document.getElementById('callout-roof-fold');
+  if (!_houseSetEl)    _houseSetEl    = document.getElementById('callout-house-set');
 
   // Skip work entirely when all groups are invisible — getBBox on SVG and
   // matrix multiplies aren't free, and these callouts are only on screen
@@ -254,8 +257,10 @@ export function updateCallouts(refs, camera, _renderer) {
   const swVisible = _sewerWaterEl  && +getComputedStyle(_sewerWaterEl).opacity  > 0.001;
   const fbVisible = _foundBuildEl  && +getComputedStyle(_foundBuildEl).opacity  > 0.001;
   const rfVisible = _roofFoldEl    && +getComputedStyle(_roofFoldEl).opacity    > 0.001;
+  const hsVisible = _houseSetEl    && +getComputedStyle(_houseSetEl).opacity    > 0.001;
   if (!mVisible && !cVisible && !fVisible && !uVisible &&
-      !wVisible && !rVisible && !dVisible && !swVisible && !fbVisible && !rfVisible) return;
+      !wVisible && !rVisible && !dVisible && !swVisible && !fbVisible &&
+      !rfVisible && !hsVisible) return;
 
   // SVG overlay uses CSS pixels (no viewBox, width/height = 100%) so we map
   // NDC -> pixels with the CSS viewport size, NOT the renderer's drawing
@@ -321,5 +326,14 @@ export function updateCallouts(refs, camera, _renderer) {
   if (rfVisible) {
     updateCalloutGroupSingle(_roofFoldEl, LABEL_TOP_FRAC_HIGH, refs.moduleB, camera, w, h,
                              { x: 0, y: 12, z: 0 });
+  }
+  // House-set header callout: Stage 12 (site assembly). Text-only banner
+  // (line + dot hidden via CSS), parked at LABEL_TOP_FRAC_HIGH on the
+  // right side. The geometry attributes are still updated each frame —
+  // they're a cheap no-op since the elements don't render — and target /
+  // offset stay set so future iterations can re-enable the line easily.
+  if (hsVisible) {
+    updateCalloutGroupSingle(_houseSetEl, LABEL_TOP_FRAC_HIGH, refs.moduleA, camera, w, h,
+                             { x: 0, y: 5, z: 0 });
   }
 }

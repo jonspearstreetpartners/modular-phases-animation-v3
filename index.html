@@ -200,11 +200,12 @@
       #callouts .callout-dot {
         fill: var(--spear-navy);
       }
-      /* Roof-trusses callout is text-only — no leader line / dot. The
-         label stands alone at the top of the screen during the truss
-         drop, so the user reads it as a banner rather than a pointer. */
+      /* Text-only callouts — no leader line / dot. The label stands alone
+         at the top of the screen as a banner rather than a pointer. */
       #callouts #callout-roof line,
-      #callouts #callout-roof circle {
+      #callouts #callout-roof circle,
+      #callouts #callout-house-set line,
+      #callouts #callout-house-set circle {
         display: none;
       }
       /* Mobile: shrink the callout text and tighten the leader-line stroke
@@ -735,6 +736,12 @@
           <line class="callout-line" />
           <circle class="callout-dot" r="3" />
           <text class="callout-text" text-anchor="middle">Hinged Roof lowers for Transport</text>
+        </g>
+        <!-- Stage 12 (Site assembly) — text-only header during crane set -->
+        <g id="callout-house-set" class="callout-group">
+          <line class="callout-line" />
+          <circle class="callout-dot" r="3" />
+          <text class="callout-text" text-anchor="middle">House Set on Foundation by Crane</text>
         </g>
       </svg>
 
