@@ -31,6 +31,9 @@ function projectToScreen(worldPos, camera, w, h) {
 //     yellow-circle reference).
 const LABEL_RIGHT_FRAC_DESKTOP = 0.97;
 const LABEL_RIGHT_FRAC_MOBILE  = 0.94;     // a touch more breathing room on phones
+const LABEL_LEFT_FRAC_DESKTOP  = 0.03;     // mirror of the right-side margin
+const LABEL_LEFT_FRAC_MOBILE   = 0.06;
+const LABEL_TOP_FRAC_HIGH      = 0.18;     // upper area, below brand-tag/process title
 const LABEL_TOP_FRAC_MID       = 0.42;
 const LABEL_TOP_FRAC_BOTTOM    = 0.85;
 const MOBILE_BREAKPOINT_PX     = 768;
@@ -86,12 +89,20 @@ function setLabelText(textEl, lines, x) {
   textEl.dataset.renderedKey = key;
 }
 
-function placeLabel(textEl, w, h, topFrac) {
+function placeLabel(textEl, w, h, topFrac, leftSide = false) {
   const mobile = isMobile(w);
-  const rightFrac = mobile ? LABEL_RIGHT_FRAC_MOBILE : LABEL_RIGHT_FRAC_DESKTOP;
-  const textX = w * rightFrac;
+  let textX, anchor;
+  if (leftSide) {
+    const leftFrac = mobile ? LABEL_LEFT_FRAC_MOBILE : LABEL_LEFT_FRAC_DESKTOP;
+    textX  = w * leftFrac;
+    anchor = 'start';      // text grows rightward from x
+  } else {
+    const rightFrac = mobile ? LABEL_RIGHT_FRAC_MOBILE : LABEL_RIGHT_FRAC_DESKTOP;
+    textX  = w * rightFrac;
+    anchor = 'end';        // text grows leftward from x
+  }
   const textY = h * topFrac;
-  textEl.setAttribute('text-anchor', 'end');
+  textEl.setAttribute('text-anchor', anchor);
   textEl.setAttribute('x', textX);
   textEl.setAttribute('y', textY);
 
@@ -106,14 +117,19 @@ function placeLabel(textEl, w, h, topFrac) {
   setLabelText(textEl, wrapped || [textEl.dataset.fullText], textX);
 
   let bbox;
-  try { bbox = textEl.getBBox(); } catch { bbox = { x: textX - 280, y: textY - 18, width: 280, height: 22 }; }
+  try { bbox = textEl.getBBox(); } catch {
+    const fallbackX = leftSide ? textX : textX - 280;
+    bbox = { x: fallbackX, y: textY - 18, width: 280, height: 22 };
+  }
 
   return {
     mobile,
-    leftEdgeX: bbox.x,
-    midY:      bbox.y + bbox.height / 2,
-    topY:      bbox.y + 4,
-    botY:      bbox.y + bbox.height - 2,
+    leftSide,
+    leftEdgeX:  bbox.x,
+    rightEdgeX: bbox.x + bbox.width,
+    midY:       bbox.y + bbox.height / 2,
+    topY:       bbox.y + 4,
+    botY:       bbox.y + bbox.height - 2,
   };
 }
 
@@ -170,7 +186,11 @@ function updateCalloutGroup(group, topFrac, moduleA, moduleB, camera, w, h) {
 // the leader line would otherwise cut through the visible mass of the
 // target (e.g., aiming the utilities dot at the right wall of the home
 // rather than its center).
-function updateCalloutGroupSingle(group, topFrac, target, camera, w, h, offset = 1.0) {
+//
+// `leftSide` picks which side of the viewport the label sits on (default
+// right). Line origin is the bbox edge nearest the dot (left edge of a
+// right-aligned label, right edge of a left-aligned one).
+function updateCalloutGroupSingle(group, topFrac, target, camera, w, h, offset = 1.0, leftSide = false) {
   if (!group || !target) return;
 
   target.getWorldPosition(_world);
@@ -184,11 +204,12 @@ function updateCalloutGroupSingle(group, topFrac, target, camera, w, h, offset =
   const p = projectToScreen(_world, camera, w, h);
 
   const text = group.querySelector('text');
-  const place = placeLabel(text, w, h, topFrac);
+  const place = placeLabel(text, w, h, topFrac, leftSide);
 
   const line = group.querySelector('line');
   const dot  = group.querySelector('circle');
-  line.setAttribute('x1', place.leftEdgeX - 6);
+  const lineOriginX = leftSide ? place.rightEdgeX + 6 : place.leftEdgeX - 6;
+  line.setAttribute('x1', lineOriginX);
   line.setAttribute('y1', place.midY);
   line.setAttribute('x2', p.x);
   line.setAttribute('y2', p.y);
@@ -255,19 +276,20 @@ export function updateCallouts(refs, camera, _renderer) {
   // the wall surface rather than module center.
   if (wVisible) updateCalloutGroupSingle(_wallsEl,      LABEL_TOP_FRAC_MID,    refs.moduleA,   camera, w, h,
                                          { x: 7, y: 5, z: 0 });
-  // Roof callout: Stage 8. Pushed FAR to the right of module B (offset.x
-  // = 12 ≈ a full module-width past center) so the leader line never
-  // crosses the truss / module body — anchors at a point in the air to
-  // the right of the roof peak instead.
-  if (rVisible) updateCalloutGroupSingle(_roofEl,       LABEL_TOP_FRAC_MID,    refs.moduleB,   camera, w, h,
-                                         { x: 12, y: 13, z: 0 });
-  // Driveway callout: late Stage 12. Targets the WALKWAY mesh
-  // specifically (porch_walkway) inside the porch group, so the dot
-  // lands on the concrete strip rather than the porch deck above it.
+  // Roof callout: Stage 8. Label moved UP to LABEL_TOP_FRAC_HIGH (~18%
+  // from top, just below the brand-tag / process-title) so the text no
+  // longer overlaps the module body, plus dot pushed far to the right
+  // of module B so the leader line stays clear of the trusses.
+  if (rVisible) updateCalloutGroupSingle(_roofEl,       LABEL_TOP_FRAC_HIGH,   refs.moduleB,   camera, w, h,
+                                         { x: 14, y: 13, z: 0 });
+  // Driveway callout: late Stage 12. Moved to the LEFT side of the
+  // viewport per user request (was overlapping the bottom-right
+  // utilities callout). Targets the porch_walkway mesh so the dot
+  // lands on the concrete strip.
   if (dVisible) {
     const walkway = refs.porch?.getObjectByName('porch_walkway') ?? refs.porch;
     updateCalloutGroupSingle(_drivewayEl, LABEL_TOP_FRAC_BOTTOM, walkway, camera, w, h,
-                             { x: 0, y: 0.1, z: 0 });
+                             { x: 0, y: 0.1, z: 0 }, /* leftSide */ true);
   }
   // Sewer + water callout: Section SW1. Targets one of the trench meshes
   // so the dot lands on the parallel-pipe area at ground level.
