@@ -113,18 +113,15 @@ export function buildCrane() {
   // "crane lift" feel — the cables read as suspending the load and the
   // chassis reads as the operator/source.
 
-  // ---- Hook + 4 cables (descend from above the camera frame) ----
-  // Conceptually: cables descend from a point 60 ft directly above each
-  // module's location. Stages.js animates the hook's world position; cables
-  // stretch from the hook UP to a fixed off-camera height, so they always
-  // read as "going up out of the frame."
-  const ANCHOR_Y = 80;          // off-camera anchor height (above orthographic frustum)
+  // ---- Hook + 4 cables (short evocative stubs above the hook) ----
+  // Cables are short fixed-length segments rising from the hook. They read
+  // as "the load is suspended from above" without descending visibly into
+  // the module from off-camera. Earlier versions stretched cables all the
+  // way up to an ANCHOR_Y=80 off-camera point, which made the cables
+  // appear to penetrate the open-top module from this isometric angle.
+  const CABLE_LEN = 8;          // cable length in ft (visible above hook)
   const hook = new THREE.Group();
   hook.name = 'crane_hook';
-  hook.userData.boomTipX = 0;
-  hook.userData.boomTipY = ANCHOR_Y;     // cables stretch up to this Y
-  hook.userData.mastTop  = ANCHOR_Y;
-  hook.userData.boomLen  = 0;
   hook.position.set(0, 30, 0);             // initial rest dangle at y=30
   group.add(hook);
 
@@ -138,23 +135,18 @@ export function buildCrane() {
   hookBlock.name = 'crane_hookblock';
   hook.add(hookBlock);
 
-  // Lift cables — 4 at the corners of an imaginary spreader bar, going UP to
-  // the boom tip. Built as cylinders parented to the hook so they move with
-  // the hook AND scale up to the (changing) distance to the boom tip via
-  // userData.cableNeedsUpdate. The crane stage will call updateCableLengths
-  // each frame.
+  // Lift cables — 4 short stubs at the corners of an imaginary spreader bar,
+  // parented to the hook so they follow it. Fixed length so they stay above
+  // the hook (and above the module top) without trailing off-camera or
+  // appearing to descend into the module from above.
   const cableSpread = 4;            // square half-width of the cable spread
   const cables = [];
   for (const dx of [-1, +1]) {
     for (const dz of [-1, +1]) {
-      // Cable length 12 at rest (above the hook block toward the boom tip).
-      const len = 12;
-      const geo = new THREE.CylinderGeometry(0.07, 0.07, len, 6);
-      geo.translate(0, len / 2, 0);   // anchor at -Y (hook end)
+      const geo = new THREE.CylinderGeometry(0.07, 0.07, CABLE_LEN, 6);
+      geo.translate(0, CABLE_LEN / 2, 0);   // anchor at -Y (hook end)
       const c = new THREE.Mesh(geo, cableMat());
       c.position.set(dx * cableSpread, 0.6, dz * cableSpread);
-      c.userData.cornerX = dx * cableSpread;
-      c.userData.cornerZ = dz * cableSpread;
       c.name = `crane_cable_${dx > 0 ? 'e' : 'w'}_${dz > 0 ? 's' : 'n'}`;
       hook.add(c);
       cables.push(c);
@@ -167,21 +159,9 @@ export function buildCrane() {
 }
 
 /**
- * Update cable lengths each frame so they always reach from the hook UP to
- * a fixed off-camera anchor (hook.userData.boomTipY = ANCHOR_Y from build).
- * The boom + mast were removed — cables now read as descending out of the
- * top of the frame, so the load appears suspended without any visible
- * geometry that could clip into modules.
+ * Cables are now fixed-length stubs above the hook, so per-frame updates
+ * are unnecessary. Function retained as a no-op for callers in main.js.
  */
-export function updateCraneCables(crane) {
-  if (!crane || !crane.userData.cables) return;
-  const hook = crane.userData.hook;
-  if (!hook) return;
-
-  const tipY = hook.userData.boomTipY;
-  const hookY = hook.position.y;
-  const len = Math.max(0.5, tipY - hookY);
-  for (const c of crane.userData.cables) {
-    c.scale.y = len / 12;
-  }
+export function updateCraneCables(_crane) {
+  // intentionally empty
 }
