@@ -271,10 +271,13 @@ export function updateCallouts(refs, camera, _renderer) {
   // version into the module footprint.
   if (uVisible) updateCalloutGroupSingle(_utilitiesEl,  LABEL_TOP_FRAC_BOTTOM, refs.moduleA,   camera, w, h,
                                          { x: 14, y: 4, z: 0 });
-  // Walls callout: Stage 5. Aim the dot at the SCREEN-FACING long wall
-  // (+X side of the module, halfway up the wall) so the line lands on
-  // the wall surface rather than module center.
-  if (wVisible) updateCalloutGroupSingle(_wallsEl,      LABEL_TOP_FRAC_MID,    refs.moduleA,   camera, w, h,
+  // Walls callout: Stage 5. Aim the dot at the EAST exterior wall of
+  // module B (the RIGHT module from the iso camera angle, factoryX
+  // = +9.59 + W/2 ≈ +16.6). Putting the dot on the right module
+  // keeps both text label and dot on the same side of the screen,
+  // so the leader line never has to fly across the top of either
+  // module to connect them.
+  if (wVisible) updateCalloutGroupSingle(_wallsEl,      LABEL_TOP_FRAC_MID,    refs.moduleB,   camera, w, h,
                                          { x: 7, y: 5, z: 0 });
   // Roof callout: Stage 8. Label moved UP to LABEL_TOP_FRAC_HIGH (~18%
   // from top, just below the brand-tag / process-title) so the text no
