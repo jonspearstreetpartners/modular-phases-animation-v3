@@ -106,23 +106,26 @@
         text-align: center;
         text-transform: uppercase;
       }
-      #process-title { white-space: nowrap; }
-      /* Longer multi-word phrases — allow wrapping with a max width so they
-         stay readable on narrow viewports. */
+      /* All three centered titles allow wrapping inside an 80vw cap so the
+         longer phrases (e.g., "Modular Construction Factory Process ~ 1-3
+         Days — Controlled Factory Environment") fit on screen at the large
+         centered presentation size. */
+      #process-title,
       #transport-title,
       #intro-title {
         max-width: 80vw;
         line-height: 1.15;
       }
+      /* The Process title's text is the longest of the three (it includes
+         the time-budget + environment line) — give it a tighter desktop
+         font ceiling so the wrapped layout still fits comfortably. */
+      #process-title {
+        font-size: clamp(22px, 4vw, 42px);
+      }
       @media (max-width: 768px) {
-        /* On mobile the process-title would overflow horizontally on a
-           single line (~470 px wide at 36 px / 1 px-letter-spacing vs a
-           375 px viewport), so we allow wrapping and constrain width. */
         #process-title {
-          white-space: normal;
           max-width: 88vw;
-          line-height: 1.15;
-          font-size: clamp(18px, 5.5vw, 30px);
+          font-size: clamp(16px, 4.5vw, 26px);
           letter-spacing: 0.8px;
         }
         #transport-title,
