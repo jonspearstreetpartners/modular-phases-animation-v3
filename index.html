@@ -80,6 +80,35 @@
         width: auto;
       }
 
+      /* Process title — appears after the Spear intro logo settles into the
+         top-right corner. Starts huge + centered, then shrinks and travels
+         up to the top of the viewport where it stays for the rest of the
+         animation. Same transform-origin trick as #intro-logo: CSS rest is
+         centered with translate(-50%, -50%); GSAP animates x/y/scale on top. */
+      #process-title {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+        pointer-events: none;
+        z-index: 9;
+        color: var(--spear-navy);
+        font-family: inherit;
+        font-weight: 600;
+        font-size: clamp(28px, 6vw, 64px);
+        letter-spacing: 1.5px;
+        text-align: center;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      @media (max-width: 768px) {
+        #process-title {
+          font-size: clamp(20px, 6.5vw, 38px);
+          letter-spacing: 1px;
+        }
+      }
+
       /* Brand tag (top-right) */
       #brand-tag {
         position: absolute;
@@ -509,6 +538,10 @@
       <div id="brand-tag">
         <img src="/spear-partners-logo.png" alt="Spear Partners" />
       </div>
+
+      <!-- Process title: fades in centered after the Spear intro, then travels
+           to the top of the screen and remains there in small font. -->
+      <div id="process-title">Modular Construction Factory Process</div>
 
       <!-- Stage chips: click to jump directly to a phase -->
       <div id="stage-chips"></div>

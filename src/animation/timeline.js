@@ -1,8 +1,9 @@
 // Master timeline composer. Calls each stage function with its start time.
 //
-// v3 timeline order (~76.5 s total, includes intro):
-//   0. Intro overlay                      (0.0 → 2.5)   large logo shrinks to top-right
-//   1. Floor system & module base         (2.5 → 8.0)
+// v3 timeline order (~80 s total, includes intro):
+//   0a. Spear logo intro                  (0.0 → 2.5)   large logo shrinks to top-right
+//   0b. Process title                     (2.5 → 6.0)   large centered title shrinks to top
+//   1. Floor system & module base         (6.0 → 11.5)
 //   2. Floor MEP rough-in                 (8.0 → 11.5)
 //   3. Subfloor deck                      (11.5 → 14.5)
 //   4. Subfloor MEP & fixtures            (14.5 → 18.5)
@@ -24,7 +25,8 @@ import {
 import { buildCameraAnimation } from './camera.js';
 
 // All construction stages shift right by INTRO_DURATION so the intro plays first.
-export const INTRO_DURATION = 2.5;
+// Intro = Spear logo (0 → 2.5) + process title (2.5 → 6.0).
+export const INTRO_DURATION = 6.0;
 
 export const STAGE_TIMES = {
   s1:  INTRO_DURATION + 0.0,
@@ -102,11 +104,46 @@ function buildIntro(tl) {
   }, 2.1);
 }
 
+/**
+ * Process title (2.5 → 6.0):
+ *   - 2.5 → 3.0  Fade in centered, large
+ *   - 3.0 → 4.5  Hold (read it)
+ *   - 4.5 → 5.5  Shrink + travel up to top of viewport
+ *   - Stays small at top for the rest of the animation
+ *
+ * Same transform-origin trick as #intro-logo: rest position is top:50%
+ * left:50% with translate(-50%, -50%); GSAP animates xPercent/yPercent +
+ * scale on top. Final y is computed from viewport size each frame.
+ */
+function buildProcessTitle(tl) {
+  tl.set('#process-title', { opacity: 0, scale: 1, x: 0, y: 0 }, 0);
+
+  // Fade in centered + large
+  tl.to('#process-title', {
+    opacity: 1,
+    duration: 0.5,
+    ease: 'power2.out',
+  }, 2.5);
+
+  // Hold (3.0 → 4.5)
+
+  // Shrink + travel to top of viewport (4.5 → 5.5).
+  // Scale 0.32 matches the corner-logo size ratio. y target places the
+  // scaled text ~24 px from the top of the viewport.
+  tl.to('#process-title', {
+    duration: 1.0,
+    ease: 'power2.inOut',
+    scale: 0.32,
+    y: () => -(window.innerHeight / 2 - 30),
+  }, 4.5);
+}
+
 export function buildTimeline(refs, { paused = true } = {}) {
   const tl = gsap.timeline({ paused, defaults: { overwrite: 'auto' } });
 
   // Intro overlay (0 → INTRO_DURATION)
   buildIntro(tl);
+  buildProcessTitle(tl);
 
   stageFloor(             tl, refs, STAGE_TIMES.s1);
   stageFloorMEP(          tl, refs, STAGE_TIMES.s2);
