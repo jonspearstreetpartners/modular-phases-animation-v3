@@ -214,9 +214,10 @@ function buildTransportTitle(tl, atStart) {
  * for visual consistency.
  */
 function buildFloorCallouts(tl) {
-  tl.set('#callout-modules', { opacity: 0 }, 0);
-  tl.set('#callout-codes',   { opacity: 0 }, 0);
+  tl.set('#callout-modules',    { opacity: 0 }, 0);
+  tl.set('#callout-codes',      { opacity: 0 }, 0);
   tl.set('#callout-foundation', { opacity: 0 }, 0);
+  tl.set('#callout-utilities',  { opacity: 0 }, 0);
 
   // "Two Modules for One House"
   tl.to('#callout-modules', {
@@ -243,6 +244,17 @@ function buildFloorCallouts(tl) {
   tl.to('#callout-foundation', {
     opacity: 0, duration: 0.7, ease: 'power2.in',
   }, STAGE_TIMES.s12 + 8.0);
+
+  // "Connect water, sewer, gas and electric" — late Stage 12, after the
+  // upper module is stacked and the crane has driven away (~s12 + 16.5).
+  // Holds through the porch reveal and fades out ~3 s before the camera
+  // begins its head-on close-in shot at INTRO + 78.5 (= s12 + 22).
+  tl.to('#callout-utilities', {
+    opacity: 1, duration: 0.7, ease: 'power2.out',
+  }, STAGE_TIMES.s12 + 16.5);
+  tl.to('#callout-utilities', {
+    opacity: 0, duration: 0.7, ease: 'power2.in',
+  }, STAGE_TIMES.s12 + 21.0);
 }
 
 export function buildTimeline(refs, { paused = true } = {}) {

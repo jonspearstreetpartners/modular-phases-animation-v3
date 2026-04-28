@@ -41,8 +41,9 @@ const isMobile = (w) => w <= MOBILE_BREAKPOINT_PX;
 // below the mobile breakpoint. Each entry is an array of lines that will
 // render stacked (line height ~ 1.15em) via SVG <tspan>.
 const WRAPPED_TEXT = {
-  'callout-modules': ['Two Modules', 'for One House'],
-  'callout-codes':   ['Constructed to State', 'Building Codes'],
+  'callout-modules':   ['Two Modules', 'for One House'],
+  'callout-codes':     ['Constructed to State', 'Building Codes'],
+  'callout-utilities': ['Connect water, sewer,', 'gas and electric'],
   // 'callout-foundation' is short ("Permanent Foundation") — fits on one
   // line at any size, no entry needed.
 };
@@ -183,11 +184,13 @@ function updateCalloutGroupSingle(group, topFrac, target, camera, w, h, yOffset 
 let _modulesEl    = null;
 let _codesEl      = null;
 let _foundationEl = null;
+let _utilitiesEl  = null;
 
 export function updateCallouts(refs, camera, _renderer) {
   if (!_modulesEl)    _modulesEl    = document.getElementById('callout-modules');
   if (!_codesEl)      _codesEl      = document.getElementById('callout-codes');
   if (!_foundationEl) _foundationEl = document.getElementById('callout-foundation');
+  if (!_utilitiesEl)  _utilitiesEl  = document.getElementById('callout-utilities');
 
   // Skip work entirely when all groups are invisible — getBBox on SVG and
   // matrix multiplies aren't free, and these callouts are only on screen
@@ -195,7 +198,8 @@ export function updateCallouts(refs, camera, _renderer) {
   const mVisible = _modulesEl    && +getComputedStyle(_modulesEl).opacity    > 0.001;
   const cVisible = _codesEl      && +getComputedStyle(_codesEl).opacity      > 0.001;
   const fVisible = _foundationEl && +getComputedStyle(_foundationEl).opacity > 0.001;
-  if (!mVisible && !cVisible && !fVisible) return;
+  const uVisible = _utilitiesEl  && +getComputedStyle(_utilitiesEl).opacity  > 0.001;
+  if (!mVisible && !cVisible && !fVisible && !uVisible) return;
 
   // SVG overlay uses CSS pixels (no viewBox, width/height = 100%) so we map
   // NDC -> pixels with the CSS viewport size, NOT the renderer's drawing
@@ -208,4 +212,8 @@ export function updateCallouts(refs, camera, _renderer) {
   // Foundation callout sits in the bottom-right — empty space below the
   // foundation pad, matching the user-supplied yellow-circle reference.
   if (fVisible) updateCalloutGroupSingle(_foundationEl, LABEL_TOP_FRAC_BOTTOM, refs.foundation, camera, w, h, 0.5);
+  // Utilities callout: late Stage 12, points at the assembled home (lower
+  // module is the visible mass at SITE_X by the time this fires). Aim a
+  // few feet up the side wall so the dot lands on the house, not the slab.
+  if (uVisible) updateCalloutGroupSingle(_utilitiesEl,  LABEL_TOP_FRAC_MID,    refs.moduleA,   camera, w, h, 5.0);
 }
