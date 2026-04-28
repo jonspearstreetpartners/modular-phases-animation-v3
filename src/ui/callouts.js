@@ -44,8 +44,10 @@ const WRAPPED_TEXT = {
   'callout-modules':   ['Two Modules', 'for One House'],
   'callout-codes':     ['Constructed to State', 'Building Codes'],
   'callout-utilities': ['Connect water, sewer,', 'gas and electric'],
-  // 'callout-foundation' is short ("Permanent Foundation") — fits on one
-  // line at any size, no entry needed.
+  'callout-walls':     ['Insulation and', 'Drywall Pre-installed'],
+  'callout-roof':      ['Trusses Pre-Assembled', 'Ceiling Drywall Pre-Installed'],
+  // 'callout-foundation' ("Permanent Foundation") and 'callout-driveway'
+  // ("Pour a driveway") are short enough to fit on one line at any size.
 };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -161,11 +163,22 @@ function updateCalloutGroup(group, topFrac, moduleA, moduleB, camera, w, h) {
 }
 
 // Single-target callout — one leader line + dot pointing at one Object3D.
-function updateCalloutGroupSingle(group, topFrac, target, camera, w, h, yOffset = 1.0) {
+// `offset` may be a number (legacy y-offset) OR an {x, y, z} object so the
+// caller can nudge the dot off the target's geometric center — useful when
+// the leader line would otherwise cut through the visible mass of the
+// target (e.g., aiming the utilities dot at the right wall of the home
+// rather than its center).
+function updateCalloutGroupSingle(group, topFrac, target, camera, w, h, offset = 1.0) {
   if (!group || !target) return;
 
   target.getWorldPosition(_world);
-  _world.y += yOffset;
+  if (typeof offset === 'number') {
+    _world.y += offset;
+  } else {
+    _world.x += offset.x ?? 0;
+    _world.y += offset.y ?? 0;
+    _world.z += offset.z ?? 0;
+  }
   const p = projectToScreen(_world, camera, w, h);
 
   const text = group.querySelector('text');
@@ -185,12 +198,18 @@ let _modulesEl    = null;
 let _codesEl      = null;
 let _foundationEl = null;
 let _utilitiesEl  = null;
+let _wallsEl      = null;
+let _roofEl       = null;
+let _drivewayEl   = null;
 
 export function updateCallouts(refs, camera, _renderer) {
   if (!_modulesEl)    _modulesEl    = document.getElementById('callout-modules');
   if (!_codesEl)      _codesEl      = document.getElementById('callout-codes');
   if (!_foundationEl) _foundationEl = document.getElementById('callout-foundation');
   if (!_utilitiesEl)  _utilitiesEl  = document.getElementById('callout-utilities');
+  if (!_wallsEl)      _wallsEl      = document.getElementById('callout-walls');
+  if (!_roofEl)       _roofEl       = document.getElementById('callout-roof');
+  if (!_drivewayEl)   _drivewayEl   = document.getElementById('callout-driveway');
 
   // Skip work entirely when all groups are invisible — getBBox on SVG and
   // matrix multiplies aren't free, and these callouts are only on screen
@@ -199,7 +218,10 @@ export function updateCallouts(refs, camera, _renderer) {
   const cVisible = _codesEl      && +getComputedStyle(_codesEl).opacity      > 0.001;
   const fVisible = _foundationEl && +getComputedStyle(_foundationEl).opacity > 0.001;
   const uVisible = _utilitiesEl  && +getComputedStyle(_utilitiesEl).opacity  > 0.001;
-  if (!mVisible && !cVisible && !fVisible && !uVisible) return;
+  const wVisible = _wallsEl      && +getComputedStyle(_wallsEl).opacity      > 0.001;
+  const rVisible = _roofEl       && +getComputedStyle(_roofEl).opacity       > 0.001;
+  const dVisible = _drivewayEl   && +getComputedStyle(_drivewayEl).opacity   > 0.001;
+  if (!mVisible && !cVisible && !fVisible && !uVisible && !wVisible && !rVisible && !dVisible) return;
 
   // SVG overlay uses CSS pixels (no viewBox, width/height = 100%) so we map
   // NDC -> pixels with the CSS viewport size, NOT the renderer's drawing
@@ -212,8 +234,21 @@ export function updateCallouts(refs, camera, _renderer) {
   // Foundation callout sits in the bottom-right — empty space below the
   // foundation pad, matching the user-supplied yellow-circle reference.
   if (fVisible) updateCalloutGroupSingle(_foundationEl, LABEL_TOP_FRAC_BOTTOM, refs.foundation, camera, w, h, 0.5);
-  // Utilities callout: late Stage 12, points at the assembled home (lower
-  // module is the visible mass at SITE_X by the time this fires). Aim a
-  // few feet up the side wall so the dot lands on the house, not the slab.
-  if (uVisible) updateCalloutGroupSingle(_utilitiesEl,  LABEL_TOP_FRAC_MID,    refs.moduleA,   camera, w, h, 5.0);
+  // Utilities callout: late Stage 12, points at the EAST wall of the home
+  // (X-offset of +W/2 + 1.5) so the leader line stays on the right side
+  // of the house rather than crossing through the front face. Y-offset
+  // halfway up the wall so the dot lands at a natural eye-level point.
+  if (uVisible) updateCalloutGroupSingle(_utilitiesEl,  LABEL_TOP_FRAC_MID,    refs.moduleA,   camera, w, h,
+                                         { x: 8.5, y: 5, z: 0 });
+  // Walls callout: Stage 5. Points at module A's wall area mid-height.
+  if (wVisible) updateCalloutGroupSingle(_wallsEl,      LABEL_TOP_FRAC_MID,    refs.moduleA,   camera, w, h,
+                                         { x: 0, y: 8, z: 0 });
+  // Roof callout: Stage 8. Points at module B (upper, the one with a roof).
+  if (rVisible) updateCalloutGroupSingle(_roofEl,       LABEL_TOP_FRAC_MID,    refs.moduleB,   camera, w, h,
+                                         { x: 0, y: 12, z: 0 });
+  // Driveway callout: late Stage 12. Refs.porch contains the walkway mesh
+  // (porch_walkway). Aim at the porch group center; its world position
+  // sits over the walkway since the porch is centered on the home.
+  if (dVisible) updateCalloutGroupSingle(_drivewayEl,   LABEL_TOP_FRAC_BOTTOM, refs.porch,     camera, w, h,
+                                         { x: 0, y: 0.5, z: 0 });
 }

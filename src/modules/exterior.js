@@ -104,20 +104,21 @@ export function buildModuleExterior({ side = 'A' } = {}) {
   }
   group.add(housewrap);
 
-  // --- WINDOWS — 3 windows on the outer long wall ---
+  // --- WINDOWS — 3 on the existing outer long wall + 2 on the OPPOSITE
+  //     long wall (the side facing the camera in iso view, per user
+  //     request). Both sets share the same construction (back, glass,
+  //     picture-frame trim); only the long-wall sign + window Z positions
+  //     differ.
   const windowsGroup = new THREE.Group();
   windowsGroup.name = 'windows';
 
-  const windowZs = [-L * 0.32, 0, L * 0.32];
   const winW = 3.0;
   const winH = 4.0;
   const winY = subfloorTop + 4.0; // sill ~4 ft above floor
-  const winXOut = outerLongSign * (W / 2 + TOTAL_OFF + 0.02);
-  for (let i = 0; i < windowZs.length; i++) {
-    const wz = windowZs[i];
 
+  const buildSideWindow = (longSign, wz, idName) => {
     const winGroup = new THREE.Group();
-    winGroup.name = `window_${i}`;
+    winGroup.name = idName;
 
     // Backing plane (sits flush in the wall opening, behind glass + trim)
     const back = new THREE.Mesh(
@@ -133,7 +134,7 @@ export function buildModuleExterior({ side = 'A' } = {}) {
       new THREE.BoxGeometry(0.04, winH * 0.85, winW * 0.85),
       glassMat(),
     );
-    pane.position.set(outerLongSign * 0.04, 0, 0);
+    pane.position.set(longSign * 0.04, 0, 0);
     winGroup.add(pane);
 
     // Picture-frame TRIM around the window — 4 thicker white casing strips
@@ -142,7 +143,7 @@ export function buildModuleExterior({ side = 'A' } = {}) {
     // Trim is ~3" wide, projects 1" outboard of the siding face.
     const trimW = 0.25;            // casing width (perpendicular to opening edge)
     const trimT = 0.12;             // how far it stands proud (along wall normal X)
-    const trimX = outerLongSign * (TOTAL_OFF * 0.6 + trimT / 2);
+    const trimX = longSign * (TOTAL_OFF * 0.6 + trimT / 2);
     // Top + bottom (run along Z, full width including corners)
     for (const sy of [-1, +1]) {
       const strip = new THREE.Mesh(
@@ -151,7 +152,7 @@ export function buildModuleExterior({ side = 'A' } = {}) {
       );
       strip.position.set(trimX, sy * (winH / 2 + trimW / 2), 0);
       strip.castShadow = true;
-      strip.name = `window_${i}_trim_${sy > 0 ? 'top' : 'bot'}`;
+      strip.name = `${idName}_trim_${sy > 0 ? 'top' : 'bot'}`;
       winGroup.add(strip);
     }
     // Left + right (run along Y, between the top/bottom strips)
@@ -162,13 +163,23 @@ export function buildModuleExterior({ side = 'A' } = {}) {
       );
       strip.position.set(trimX, 0, sz * (winW / 2 + trimW / 2));
       strip.castShadow = true;
-      strip.name = `window_${i}_trim_${sz > 0 ? 'right' : 'left'}`;
+      strip.name = `${idName}_trim_${sz > 0 ? 'right' : 'left'}`;
       winGroup.add(strip);
     }
 
+    const winXOut = longSign * (W / 2 + TOTAL_OFF + 0.02);
     winGroup.position.set(winXOut, winY, wz);
     windowsGroup.add(winGroup);
-  }
+  };
+
+  // Existing 3 windows on outerLongSign (-X) wall.
+  const windowZs = [-L * 0.32, 0, L * 0.32];
+  windowZs.forEach((wz, i) => buildSideWindow(outerLongSign, wz, `window_${i}`));
+
+  // 2 NEW windows on the OPPOSITE long wall (+X, the side facing the
+  // camera in iso view). Spaced symmetrically along the module length.
+  const screenSideZs = [-L * 0.22, +L * 0.22];
+  screenSideZs.forEach((wz, i) => buildSideWindow(-outerLongSign, wz, `window_screen_${i}`));
 
   // --- UPPER-MODULE FRONT WINDOWS ---
   // Two tall vertical windows on the +Z gable end, side-by-side, spaced

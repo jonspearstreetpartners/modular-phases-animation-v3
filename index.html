@@ -89,7 +89,8 @@
          (no travel) — it just fades in, holds, and fades back out between
          the transport and site-assembly stages. */
       #process-title,
-      #transport-title {
+      #transport-title,
+      #intro-title {
         position: absolute;
         top: 50%;
         left: 50%;
@@ -106,9 +107,10 @@
         text-transform: uppercase;
       }
       #process-title { white-space: nowrap; }
-      /* Transport title is a longer sentence — allow wrapping with a max
-         width so it stays readable on narrow viewports. */
-      #transport-title {
+      /* Longer multi-word phrases — allow wrapping with a max width so they
+         stay readable on narrow viewports. */
+      #transport-title,
+      #intro-title {
         max-width: 80vw;
         line-height: 1.15;
       }
@@ -123,9 +125,39 @@
           font-size: clamp(18px, 5.5vw, 30px);
           letter-spacing: 0.8px;
         }
-        #transport-title {
+        #transport-title,
+        #intro-title {
           font-size: clamp(20px, 5.5vw, 36px);
           letter-spacing: 1px;
+        }
+      }
+      /* Phase label — the small persistent banner that lives at the very top
+         of the viewport during a phase of the animation (Site Work, Factory
+         work). Different from #process-title's two-state animation; this one
+         is positioned at the top from the start and just fades in/out. */
+      #phase-label {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        pointer-events: none;
+        z-index: 9;
+        color: var(--spear-navy);
+        font-family: inherit;
+        font-weight: 600;
+        font-size: clamp(12px, 1.6vw, 18px);
+        letter-spacing: 1.5px;
+        text-align: center;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      @media (max-width: 768px) {
+        #phase-label {
+          font-size: clamp(10px, 3vw, 14px);
+          letter-spacing: 0.8px;
+          max-width: 92vw;
+          white-space: normal;
         }
       }
 
@@ -646,6 +678,24 @@
           <line class="callout-line" />
           <circle class="callout-dot" r="3" />
           <text class="callout-text" text-anchor="middle">Connect water, sewer, gas and electric</text>
+        </g>
+        <!-- Stage 5 (walls) — pre-finished walls callout -->
+        <g id="callout-walls" class="callout-group">
+          <line class="callout-line" />
+          <circle class="callout-dot" r="3" />
+          <text class="callout-text" text-anchor="middle">Insulation and Drywall Pre-installed</text>
+        </g>
+        <!-- Stage 8 (roof) — pre-fabricated roof callout -->
+        <g id="callout-roof" class="callout-group">
+          <line class="callout-line" />
+          <circle class="callout-dot" r="3" />
+          <text class="callout-text" text-anchor="middle">Roof Trusses Pre-Assembled and Ceiling Drywall Pre-Installed</text>
+        </g>
+        <!-- Stage 12 (walkway/driveway construction) -->
+        <g id="callout-driveway" class="callout-group">
+          <line class="callout-line" />
+          <circle class="callout-dot" r="3" />
+          <text class="callout-text" text-anchor="middle">Pour a driveway</text>
         </g>
       </svg>
 
