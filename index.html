@@ -131,10 +131,12 @@
           letter-spacing: 1px;
         }
       }
-      /* Phase label — the small persistent banner that lives at the very top
+      /* Phase label — the persistent banner that lives at the very top
          of the viewport during a phase of the animation (Site Work, Factory
          work). Different from #process-title's two-state animation; this one
-         is positioned at the top from the start and just fades in/out. */
+         is positioned at the top from the start and just fades in/out. Sized
+         60% larger than the previous version per user request so the text
+         reads clearly across the top. */
       #phase-label {
         position: absolute;
         top: 12px;
@@ -146,7 +148,7 @@
         color: var(--spear-navy);
         font-family: inherit;
         font-weight: 600;
-        font-size: clamp(12px, 1.6vw, 18px);
+        font-size: clamp(19px, 2.56vw, 29px);
         letter-spacing: 1.5px;
         text-align: center;
         text-transform: uppercase;
@@ -154,7 +156,7 @@
       }
       @media (max-width: 768px) {
         #phase-label {
-          font-size: clamp(10px, 3vw, 14px);
+          font-size: clamp(16px, 4.8vw, 22px);
           letter-spacing: 0.8px;
           max-width: 92vw;
           white-space: normal;
@@ -705,6 +707,18 @@
           <line class="callout-line" />
           <circle class="callout-dot" r="3" />
           <text class="callout-text" text-anchor="middle">Pour a driveway</text>
+        </g>
+        <!-- Section SW1 (sewer + water trenches) -->
+        <g id="callout-sewer-water" class="callout-group">
+          <line class="callout-line" />
+          <circle class="callout-dot" r="3" />
+          <text class="callout-text" text-anchor="middle">Sewer and Water Connection to Main</text>
+        </g>
+        <!-- Section SW2 (foundation construction) -->
+        <g id="callout-foundation-build" class="callout-group">
+          <line class="callout-line" />
+          <circle class="callout-dot" r="3" />
+          <text class="callout-text" text-anchor="middle">Permanent Foundation with Concrete Perimeter Wall</text>
         </g>
       </svg>
 

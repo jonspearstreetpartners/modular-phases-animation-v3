@@ -41,11 +41,13 @@ const isMobile = (w) => w <= MOBILE_BREAKPOINT_PX;
 // below the mobile breakpoint. Each entry is an array of lines that will
 // render stacked (line height ~ 1.15em) via SVG <tspan>.
 const WRAPPED_TEXT = {
-  'callout-modules':   ['Two Modules', 'for One House'],
-  'callout-codes':     ['Constructed to State', 'Building Codes'],
-  'callout-utilities': ['Connect water, sewer,', 'gas and electric'],
-  'callout-walls':     ['Insulation and', 'Drywall Pre-installed'],
-  'callout-roof':      ['Trusses Pre-Assembled', 'Ceiling Drywall Pre-Installed'],
+  'callout-modules':           ['Two Modules', 'for One House'],
+  'callout-codes':             ['Constructed to State', 'Building Codes'],
+  'callout-utilities':         ['Connect water, sewer,', 'gas and electric'],
+  'callout-walls':             ['Insulation and', 'Drywall Pre-installed'],
+  'callout-roof':              ['Trusses Pre-Assembled', 'Ceiling Drywall Pre-Installed'],
+  'callout-sewer-water':       ['Sewer and Water', 'Connection to Main'],
+  'callout-foundation-build':  ['Permanent Foundation with', 'Concrete Perimeter Wall'],
   // 'callout-foundation' ("Permanent Foundation") and 'callout-driveway'
   // ("Pour a driveway") are short enough to fit on one line at any size.
 };
@@ -194,34 +196,41 @@ function updateCalloutGroupSingle(group, topFrac, target, camera, w, h, offset =
   dot.setAttribute('cy', p.y);
 }
 
-let _modulesEl    = null;
-let _codesEl      = null;
-let _foundationEl = null;
-let _utilitiesEl  = null;
-let _wallsEl      = null;
-let _roofEl       = null;
-let _drivewayEl   = null;
+let _modulesEl     = null;
+let _codesEl       = null;
+let _foundationEl  = null;
+let _utilitiesEl   = null;
+let _wallsEl       = null;
+let _roofEl        = null;
+let _drivewayEl    = null;
+let _sewerWaterEl  = null;
+let _foundBuildEl  = null;
 
 export function updateCallouts(refs, camera, _renderer) {
-  if (!_modulesEl)    _modulesEl    = document.getElementById('callout-modules');
-  if (!_codesEl)      _codesEl      = document.getElementById('callout-codes');
-  if (!_foundationEl) _foundationEl = document.getElementById('callout-foundation');
-  if (!_utilitiesEl)  _utilitiesEl  = document.getElementById('callout-utilities');
-  if (!_wallsEl)      _wallsEl      = document.getElementById('callout-walls');
-  if (!_roofEl)       _roofEl       = document.getElementById('callout-roof');
-  if (!_drivewayEl)   _drivewayEl   = document.getElementById('callout-driveway');
+  if (!_modulesEl)     _modulesEl     = document.getElementById('callout-modules');
+  if (!_codesEl)       _codesEl       = document.getElementById('callout-codes');
+  if (!_foundationEl)  _foundationEl  = document.getElementById('callout-foundation');
+  if (!_utilitiesEl)   _utilitiesEl   = document.getElementById('callout-utilities');
+  if (!_wallsEl)       _wallsEl       = document.getElementById('callout-walls');
+  if (!_roofEl)        _roofEl        = document.getElementById('callout-roof');
+  if (!_drivewayEl)    _drivewayEl    = document.getElementById('callout-driveway');
+  if (!_sewerWaterEl)  _sewerWaterEl  = document.getElementById('callout-sewer-water');
+  if (!_foundBuildEl)  _foundBuildEl  = document.getElementById('callout-foundation-build');
 
   // Skip work entirely when all groups are invisible — getBBox on SVG and
   // matrix multiplies aren't free, and these callouts are only on screen
   // for short windows during the animation.
-  const mVisible = _modulesEl    && +getComputedStyle(_modulesEl).opacity    > 0.001;
-  const cVisible = _codesEl      && +getComputedStyle(_codesEl).opacity      > 0.001;
-  const fVisible = _foundationEl && +getComputedStyle(_foundationEl).opacity > 0.001;
-  const uVisible = _utilitiesEl  && +getComputedStyle(_utilitiesEl).opacity  > 0.001;
-  const wVisible = _wallsEl      && +getComputedStyle(_wallsEl).opacity      > 0.001;
-  const rVisible = _roofEl       && +getComputedStyle(_roofEl).opacity       > 0.001;
-  const dVisible = _drivewayEl   && +getComputedStyle(_drivewayEl).opacity   > 0.001;
-  if (!mVisible && !cVisible && !fVisible && !uVisible && !wVisible && !rVisible && !dVisible) return;
+  const mVisible  = _modulesEl     && +getComputedStyle(_modulesEl).opacity     > 0.001;
+  const cVisible  = _codesEl       && +getComputedStyle(_codesEl).opacity       > 0.001;
+  const fVisible  = _foundationEl  && +getComputedStyle(_foundationEl).opacity  > 0.001;
+  const uVisible  = _utilitiesEl   && +getComputedStyle(_utilitiesEl).opacity   > 0.001;
+  const wVisible  = _wallsEl       && +getComputedStyle(_wallsEl).opacity       > 0.001;
+  const rVisible  = _roofEl        && +getComputedStyle(_roofEl).opacity        > 0.001;
+  const dVisible  = _drivewayEl    && +getComputedStyle(_drivewayEl).opacity    > 0.001;
+  const swVisible = _sewerWaterEl  && +getComputedStyle(_sewerWaterEl).opacity  > 0.001;
+  const fbVisible = _foundBuildEl  && +getComputedStyle(_foundBuildEl).opacity  > 0.001;
+  if (!mVisible && !cVisible && !fVisible && !uVisible &&
+      !wVisible && !rVisible && !dVisible && !swVisible && !fbVisible) return;
 
   // SVG overlay uses CSS pixels (no viewBox, width/height = 100%) so we map
   // NDC -> pixels with the CSS viewport size, NOT the renderer's drawing
@@ -259,5 +268,18 @@ export function updateCallouts(refs, camera, _renderer) {
     const walkway = refs.porch?.getObjectByName('porch_walkway') ?? refs.porch;
     updateCalloutGroupSingle(_drivewayEl, LABEL_TOP_FRAC_BOTTOM, walkway, camera, w, h,
                              { x: 0, y: 0.1, z: 0 });
+  }
+  // Sewer + water callout: Section SW1. Targets one of the trench meshes
+  // so the dot lands on the parallel-pipe area at ground level.
+  if (swVisible) {
+    const trench = refs.sitework?.getObjectByName('sewer_trench') ?? refs.sitework;
+    updateCalloutGroupSingle(_sewerWaterEl, LABEL_TOP_FRAC_BOTTOM, trench, camera, w, h,
+                             { x: 0, y: 0.5, z: 0 });
+  }
+  // Foundation construction callout: Section SW2. Aim at the perimeter of
+  // the foundation, top of wall (~ 0.8 ft = wallH).
+  if (fbVisible) {
+    updateCalloutGroupSingle(_foundBuildEl, LABEL_TOP_FRAC_MID, refs.foundation, camera, w, h,
+                             { x: 0, y: 0.8, z: 0 });
   }
 }

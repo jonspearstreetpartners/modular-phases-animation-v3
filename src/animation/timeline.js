@@ -156,7 +156,7 @@ function buildIntroTitle(tl) {
  */
 function buildPhaseLabel(tl) {
   tl.set('#phase-label', { opacity: 0 }, 0);
-  tl.call(() => { document.getElementById('phase-label').textContent = 'Site Work Construction ~ 20-30 days'; }, null, 5.4);
+  tl.call(() => { document.getElementById('phase-label').textContent = 'Site Work Construction ~ 20-30 days · Weather Dependent'; }, null, 5.4);
   tl.to('#phase-label', {
     opacity: 1, duration: 0.4, ease: 'power2.out',
   }, 5.5);
@@ -267,13 +267,15 @@ function buildTransportTitle(tl, atStart) {
  * for visual consistency.
  */
 function buildFloorCallouts(tl) {
-  tl.set('#callout-modules',    { opacity: 0 }, 0);
-  tl.set('#callout-codes',      { opacity: 0 }, 0);
-  tl.set('#callout-foundation', { opacity: 0 }, 0);
-  tl.set('#callout-utilities',  { opacity: 0 }, 0);
-  tl.set('#callout-walls',      { opacity: 0 }, 0);
-  tl.set('#callout-roof',       { opacity: 0 }, 0);
-  tl.set('#callout-driveway',   { opacity: 0 }, 0);
+  tl.set('#callout-modules',           { opacity: 0 }, 0);
+  tl.set('#callout-codes',             { opacity: 0 }, 0);
+  tl.set('#callout-foundation',        { opacity: 0 }, 0);
+  tl.set('#callout-utilities',         { opacity: 0 }, 0);
+  tl.set('#callout-walls',             { opacity: 0 }, 0);
+  tl.set('#callout-roof',              { opacity: 0 }, 0);
+  tl.set('#callout-driveway',          { opacity: 0 }, 0);
+  tl.set('#callout-sewer-water',       { opacity: 0 }, 0);
+  tl.set('#callout-foundation-build',  { opacity: 0 }, 0);
 
   // "Two Modules for One House"
   tl.to('#callout-modules', {
@@ -341,6 +343,28 @@ function buildFloorCallouts(tl) {
   tl.to('#callout-driveway', {
     opacity: 0, duration: 0.7, ease: 'power2.in',
   }, STAGE_TIMES.s12 + 21.0);
+
+  // "Sewer and Water Connection to Main" — Section SW1 (master 5.9 → 12.5).
+  // Fade in once the sewer trench has dug + pipe is going in, hold past
+  // the dirt-cover fill, fade out before the foundation construction
+  // (Section SW2) starts.
+  tl.to('#callout-sewer-water', {
+    opacity: 1, duration: 0.7, ease: 'power2.out',
+  }, SITEWORK_TIMES.sw1 + 0.8);
+  tl.to('#callout-sewer-water', {
+    opacity: 0, duration: 0.7, ease: 'power2.in',
+  }, SITEWORK_TIMES.sw2 - 1.0);
+
+  // "Permanent Foundation with Concrete Perimeter Wall" — Section SW2
+  // (master 12.5 → 19.5). Fade in once the perimeter walls start rising
+  // (sw2 + ~1.5), hold through the bearing footing, fade out just
+  // before the foundation hides at the end of the section.
+  tl.to('#callout-foundation-build', {
+    opacity: 1, duration: 0.7, ease: 'power2.out',
+  }, SITEWORK_TIMES.sw2 + 1.5);
+  tl.to('#callout-foundation-build', {
+    opacity: 0, duration: 0.7, ease: 'power2.in',
+  }, SITEWORK_TIMES.sw_end - 1.5);
 }
 
 export function buildTimeline(refs, { paused = true } = {}) {
