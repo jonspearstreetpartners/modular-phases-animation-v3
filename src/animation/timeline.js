@@ -33,23 +33,24 @@ import { buildCameraAnimation } from './camera.js';
 //   2.5  → 5.5   "Construction Process and Timeline for a Modular House"
 //                centered, fades in/out
 //   5.5  → 5.9   Site Work phase label fades in at top
-//   5.9  → 12.5  Section sw1 — sewer / water / drainage trenches (~6.6 s)
-//  12.5  → 19.5  Section sw2 — foundation excavation + walls   (~7.0 s)
-//  19.5  → 19.9  Site Work phase label fades out
-//  19.9  → 22.5  "Modular Construction Factory Process ~ 1-3 days"
+//   5.9  →  9.5  Section sw1 — sewer / water / drainage trenches (~3.6 s)
+//   9.5  → 16.5  Section sw2 — foundation excavation + walls   (~7.0 s)
+//  16.5  → 16.9  Site Work phase label fades out
+//  16.9  → 19.5  "Modular Construction Factory Process ~ 1-3 days"
 //                fades in centered, holds, travels to top
-//  22.5  → ...   Factory stages s1–s10 (existing choreography)
+//  19.5  → ...   Factory stages s1–s10 (existing choreography)
 //
-// All construction stages shift right by INTRO_DURATION = 22.5 (was 6.0)
-// to make room for the new front matter.
-export const INTRO_DURATION = 22.5;
+// All construction stages shift right by INTRO_DURATION = 19.5 (was 22.5).
+// Tightened the gap between sw1's animations completing (~master 8.9)
+// and sw2's foundation reveal (master 9.5) per user request.
+export const INTRO_DURATION = 19.5;
 
 // Site-work section start times (inside the intro window — NOT offset by
 // INTRO_DURATION).
 export const SITEWORK_TIMES = {
   sw1: 5.9,    // sewer / water trenches
-  sw2: 12.5,   // foundation excavation + walls
-  sw_end: 19.5,
+  sw2: 9.5,    // foundation excavation + walls (was 12.5; tighter gap)
+  sw_end: 16.5,
 };
 
 export const STAGE_TIMES = {
@@ -151,21 +152,36 @@ function buildIntroTitle(tl) {
 /**
  * Phase label (top-of-viewport persistent banner). Text content is set
  * via tl.call so it can be swapped between phases:
- *   - 5.5  → 19.9: "Site Work Construction ~ 20-30 days"
- *   - 19.9 →    : (cleared — Process title takes over the umbrella spot)
+ *   Site Work       — "Site Work Construction ~ 20-30 days · Weather
+ *                     Dependent" during sw1 + sw2 (5.5 → sw_end)
+ *   House Setting   — "House Setting ~ 1-2 days" during the early Stage
+ *                     12 work (s12 + 0.5 → s12 + 15)
+ *   Utilities/Drive — "Utilities and Driveway ~ 10-25 days · Weather
+ *                     Dependent" during the late Stage 12 work
+ *                     (s12 + 15.5 → s12 + 22)
  */
 function buildPhaseLabel(tl) {
-  tl.set('#phase-label', { opacity: 0 }, 0);
-  tl.call(() => { document.getElementById('phase-label').textContent = 'Site Work Construction ~ 20-30 days · Weather Dependent'; }, null, 5.4);
-  tl.to('#phase-label', {
-    opacity: 1, duration: 0.4, ease: 'power2.out',
-  }, 5.5);
+  const setText = (text) => () => { document.getElementById('phase-label').textContent = text; };
 
-  // Fade out at end of site-work sections
-  tl.to('#phase-label', {
-    opacity: 0, duration: 0.4, ease: 'power2.in',
-  }, SITEWORK_TIMES.sw_end);
-  tl.call(() => { document.getElementById('phase-label').textContent = ''; }, null, SITEWORK_TIMES.sw_end + 0.5);
+  tl.set('#phase-label', { opacity: 0 }, 0);
+
+  // -- Site Work ----------------------------------------------------------
+  tl.call(setText('Site Work Construction ~ 20-30 days · Weather Dependent'), null, 5.4);
+  tl.to('#phase-label', { opacity: 1, duration: 0.4, ease: 'power2.out' }, 5.5);
+  tl.to('#phase-label', { opacity: 0, duration: 0.4, ease: 'power2.in' }, SITEWORK_TIMES.sw_end);
+  tl.call(setText(''), null, SITEWORK_TIMES.sw_end + 0.5);
+
+  // -- House Setting (Stage 12 first half) -------------------------------
+  tl.call(setText('House Setting ~ 1-2 days'), null, STAGE_TIMES.s12 + 0.4);
+  tl.to('#phase-label', { opacity: 1, duration: 0.4, ease: 'power2.out' }, STAGE_TIMES.s12 + 0.5);
+  tl.to('#phase-label', { opacity: 0, duration: 0.4, ease: 'power2.in' }, STAGE_TIMES.s12 + 15.0);
+  tl.call(setText(''), null, STAGE_TIMES.s12 + 15.4);
+
+  // -- Utilities + Driveway (Stage 12 second half) ----------------------
+  tl.call(setText('Utilities and Driveway ~ 10-25 days · Weather Dependent'), null, STAGE_TIMES.s12 + 15.4);
+  tl.to('#phase-label', { opacity: 1, duration: 0.4, ease: 'power2.out' }, STAGE_TIMES.s12 + 15.5);
+  tl.to('#phase-label', { opacity: 0, duration: 0.4, ease: 'power2.in' }, STAGE_TIMES.s12 + 22.0);
+  tl.call(setText(''), null, STAGE_TIMES.s12 + 22.5);
 }
 
 /**
@@ -178,7 +194,7 @@ function buildPhaseLabel(tl) {
  *   - Stays small at top through factory stages
  *   - Fades out at start of Stage 11 (Transport)
  */
-const PROCESS_TITLE_START = 19.9;       // master-time fade-in time
+const PROCESS_TITLE_START = 16.9;       // master-time fade-in time
 function buildProcessTitle(tl) {
   // GSAP owns the centering via xPercent/yPercent so the CSS
   // `transform: translate(-50%, -50%)` baseline is replaced by an explicit
