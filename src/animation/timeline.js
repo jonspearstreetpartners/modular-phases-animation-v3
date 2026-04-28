@@ -30,27 +30,30 @@ import { buildCameraAnimation } from './camera.js';
 
 // MASTER TIMELINE LAYOUT
 //   0.0  → 2.5   Spear logo intro
-//   2.5  → 5.5   "Construction Process and Timeline for a Modular House"
+//   2.5  → 5.0   "How to Build a House in 35-60 days" (headline)
 //                centered, fades in/out
-//   5.5  → 5.9   Site Work phase label fades in at top
-//   5.9  →  9.5  Section sw1 — sewer / water / drainage trenches (~3.6 s)
-//   9.5  → 16.5  Section sw2 — foundation excavation + walls   (~7.0 s)
-//  16.5  → 16.9  Site Work phase label fades out
-//  16.9  → 19.5  "Modular Construction Factory Process ~ 1-3 days"
+//   5.0  → 7.5   "Construction Process for a Modular House"
+//                centered, fades in/out
+//   7.5  → 7.9   Site Work phase label fades in at top
+//   7.9  → 11.5  Section sw1 — sewer / water / drainage trenches (~3.6 s)
+//  11.5  → 18.5  Section sw2 — foundation excavation + walls   (~7.0 s)
+//  18.5  → 18.9  Site Work phase label fades out
+//  18.9  → 21.5  "Modular Construction Factory Process ~ 1-3 days"
 //                fades in centered, holds, travels to top
-//  19.5  → ...   Factory stages s1–s10 (existing choreography)
+//  21.5  → ...   Factory stages s1–s10 (existing choreography)
 //
-// All construction stages shift right by INTRO_DURATION = 19.5 (was 22.5).
-// Tightened the gap between sw1's animations completing (~master 8.9)
-// and sw2's foundation reveal (master 9.5) per user request.
-export const INTRO_DURATION = 19.5;
+// All construction stages shift right by INTRO_DURATION = 21.5. The +2 s
+// addition vs. the previous 19.5 makes room for the new "How to Build a
+// House in 35-60 days" headline that plays before the Construction Process
+// intro title.
+export const INTRO_DURATION = 21.5;
 
 // Site-work section start times (inside the intro window — NOT offset by
 // INTRO_DURATION).
 export const SITEWORK_TIMES = {
-  sw1: 5.9,    // sewer / water trenches
-  sw2: 9.5,    // foundation excavation + walls (was 12.5; tighter gap)
-  sw_end: 16.5,
+  sw1: 7.9,    // sewer / water trenches
+  sw2: 11.5,   // foundation excavation + walls
+  sw_end: 18.5,
 };
 
 export const STAGE_TIMES = {
@@ -134,19 +137,35 @@ function buildIntro(tl) {
 }
 
 /**
- * Intro title (2.5 → 5.5): "Construction Process and Timeline for a
- * Modular House" — appears centered after the Spear logo settles, holds
- * briefly so the viewer can read it, then fades out without travelling.
- * Acts as the umbrella name for the whole animation.
+ * Headline title (2.5 → 5.0): "How to Build a House in 35-60 days" —
+ * fires immediately after the Spear logo settles. Sets the umbrella
+ * promise of the whole animation; the Construction Process title that
+ * follows names the specific process being documented.
+ */
+function buildHeadlineTitle(tl) {
+  tl.set('#intro-headline', { opacity: 0 }, 0);
+  tl.to('#intro-headline', {
+    opacity: 1, duration: 0.5, ease: 'power2.out',
+  }, 2.5);
+  tl.to('#intro-headline', {
+    opacity: 0, duration: 0.5, ease: 'power2.in',
+  }, 4.5);
+}
+
+/**
+ * Intro title (5.0 → 7.5): "Construction Process for a Modular House" —
+ * appears centered after the headline fades out, holds briefly, then
+ * fades out without travelling. Names the process documented by the
+ * site-work + factory sequence that follows.
  */
 function buildIntroTitle(tl) {
   tl.set('#intro-title', { opacity: 0 }, 0);
   tl.to('#intro-title', {
     opacity: 1, duration: 0.5, ease: 'power2.out',
-  }, 2.5);
+  }, 5.0);
   tl.to('#intro-title', {
     opacity: 0, duration: 0.5, ease: 'power2.in',
-  }, 5.0);
+  }, 7.0);
 }
 
 /**
@@ -166,8 +185,8 @@ function buildPhaseLabel(tl) {
   tl.set('#phase-label', { opacity: 0 }, 0);
 
   // -- Site Work ----------------------------------------------------------
-  tl.call(setText('Site Work Construction ~ 20-30 days · Weather Dependent'), null, 5.4);
-  tl.to('#phase-label', { opacity: 1, duration: 0.4, ease: 'power2.out' }, 5.5);
+  tl.call(setText('Site Work Construction ~ 20-30 days · Weather Dependent'), null, 7.4);
+  tl.to('#phase-label', { opacity: 1, duration: 0.4, ease: 'power2.out' }, 7.5);
   tl.to('#phase-label', { opacity: 0, duration: 0.4, ease: 'power2.in' }, SITEWORK_TIMES.sw_end);
   tl.call(setText(''), null, SITEWORK_TIMES.sw_end + 0.5);
 
@@ -194,7 +213,7 @@ function buildPhaseLabel(tl) {
  *   - Stays small at top through factory stages
  *   - Fades out at start of Stage 11 (Transport)
  */
-const PROCESS_TITLE_START = 16.9;       // master-time fade-in time
+const PROCESS_TITLE_START = 18.9;       // master-time fade-in time
 function buildProcessTitle(tl) {
   // GSAP owns the centering via xPercent/yPercent so the CSS
   // `transform: translate(-50%, -50%)` baseline is replaced by an explicit
@@ -417,6 +436,7 @@ export function buildTimeline(refs, { paused = true } = {}) {
 
   // Intro overlay (0 → INTRO_DURATION)
   buildIntro(tl);
+  buildHeadlineTitle(tl);
   buildIntroTitle(tl);
   buildPhaseLabel(tl);
   buildProcessTitle(tl);
