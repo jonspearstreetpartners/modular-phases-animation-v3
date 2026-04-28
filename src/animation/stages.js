@@ -253,28 +253,36 @@ export function stageMEPRoughIn(tl, refs, t0) {
 }
 
 // ============================================================================
-// STAGE 8 — Roof + ceiling drop-in (5.5 sec)
+// STAGE 8 — Roof drop-in + decking (5.5 sec)
 // (Per user request: the entire truss assembly is pre-fabricated WITH the
-//  ceiling drywall already attached. The whole unit lowers as one piece —
-//  no per-truss reveal — to match factory practice where pre-assembled
-//  trusses are craned into position in a single move.)
+//  ceiling drywall already attached and the whole unit lowers as one piece.
+//  AFTER it lands, the roof decking — plywood/OSB on top of the rafters —
+//  drops into place. Shingles still go on later in Stage 9.)
 // ============================================================================
 export function stageRoof(tl, refs, t0) {
   announce(tl, t0, 7, 'Roof & ceiling drop-in');
 
-  const DROP_HEIGHT = 22;          // ft above rest position when offstage
-  const DROP_DURATION = 1.6;       // ft
-  const DROP_DELAY = 0.3;          // small pause after the stage label appears
+  const DROP_HEIGHT      = 22;     // ft above rest position when offstage
+  const DROP_DURATION    = 1.6;    // truss assembly fall duration
+  const DROP_DELAY       = 0.3;    // small pause after the stage label appears
+
+  // Decking timing: starts dropping shortly after the trusses settle
+  // (DROP_DELAY + DROP_DURATION ≈ 1.9 s into the stage), with a short stagger
+  // between the west and east halves so the install reads as sequential.
+  const DECK_DROP_AT_BASE = DROP_DELAY + DROP_DURATION + 0.2;
+  const DECK_DROP_HEIGHT  = 12;
+  const DECK_DROP_DUR     = 0.9;
+  const DECK_STAGGER      = 0.25;
 
   for (const m of [refs.moduleA, refs.moduleB]) {
     const roof = findByName(m, 'Roof');
     if (!roof) continue;
 
-    // Lift the whole roof group (trusses + ceiling drywall + hinges + slabs)
-    // up by DROP_HEIGHT, reveal it, then ease the entire unit straight down
-    // to its rest position. Position-based animation keeps everything inside
-    // the group — hinge pivots, slab anchors, rafter angles — perfectly
-    // aligned with the trusses on the way down.
+    // 1) Lift the whole roof group (trusses + ceiling drywall + hinges +
+    //    decks + slabs) up by DROP_HEIGHT, reveal it, then ease the entire
+    //    unit straight down to rest. Position-based animation keeps every
+    //    child — hinge pivots, slab anchors, rafter angles — perfectly
+    //    aligned on the way down.
     const restY = roof.position.y;
     tl.set(roof.position, { y: restY + DROP_HEIGHT }, t0);
     tl.set(roof,          { visible: true }, t0 + DROP_DELAY);
@@ -284,18 +292,40 @@ export function stageRoof(tl, refs, t0) {
       ease: 'power2.out',
     }, t0 + DROP_DELAY);
 
-    // Roof slabs (shingle layer) are handled in Stage 9 — keep them hidden
-    // here even though the roof Group is now visible.
+    // 2) Decking + shingle slabs are children of the hinges, so they ride
+    //    DOWN with the truss drop. Hide them at t0; the slabs stay hidden
+    //    until Stage 9, the decks become visible + animate at DECK_DROP_AT.
+    const decks = [];
+    const slabs = [];
     roof.traverse((o) => {
-      if (o.name && o.name.startsWith('roof_slab')) {
-        tl.set(o, { visible: false }, t0);
-      }
+      if (!o.name) return;
+      if (o.name.startsWith('roof_deck')) decks.push(o);
+      if (o.name.startsWith('roof_slab')) slabs.push(o);
     });
 
-    // Gable-end siding fills are NOT revealed here. They get installed in
-    // Stage 12 (site assembly) after stacking, because if they appeared
-    // during Stage 8 they would block the rafter hinges from folding flat
-    // in Stage 11 for transport.
+    [...decks, ...slabs].forEach((o) => {
+      tl.set(o, { visible: false }, t0);
+    });
+
+    // 3) Decks drop from above onto the rafters, west then east. Local Y
+    //    sits at chordH; we lift each by DECK_DROP_HEIGHT (in hinge-local
+    //    coords, which inherit the rafter slope) and ease back down.
+    decks.forEach((deck, i) => {
+      const restLocalY = deck.position.y;
+      tl.set(deck.position, { y: restLocalY + DECK_DROP_HEIGHT }, t0);
+      const at = t0 + DECK_DROP_AT_BASE + i * DECK_STAGGER;
+      tl.set(deck,          { visible: true }, at);
+      tl.to (deck.position, {
+        y: restLocalY,
+        duration: DECK_DROP_DUR,
+        ease: 'power2.in',
+      }, at);
+    });
+
+    // 4) Gable-end siding fills are NOT revealed here. They get installed
+    //    in Stage 12 (site assembly) after stacking, because if they
+    //    appeared during Stage 8 they would block the rafter hinges from
+    //    folding flat in Stage 11 for transport.
     m.traverse((o) => {
       if (o.name && o.name.startsWith('gable_')) {
         tl.set(o, { visible: false }, t0);
@@ -394,16 +424,21 @@ export function stageExterior(tl, refs, t0) {
       tl.to (slab.position, { y: restY, duration: 1.0, ease: 'power2.in' }, t0 + 3.5 + i * 0.1);
     });
 
-    // 5) Once the slabs are fully placed, hide the underlying truss framing
-    //    (Roof_static = chords + king-posts) and the rafters. The shingles are
-    //    the visible finish from now on — exposed framing through them looks
-    //    wrong from the iso angle. Both must be re-hidden at this point even
-    //    if the fold animation runs later (the slabs are what fold visibly).
+    // 5) Once the slabs are fully placed, hide the underlying truss FRAMING
+    //    (chords, king-posts, rafters). The shingle slabs are the visible
+    //    finish from now on, with the freshly-laid decking sitting just
+    //    beneath them (still visible through the eaves). The ceiling
+    //    drywall stays visible too — it's the room's ceiling and reads
+    //    correctly through any future interior reveals. We can't hide the
+    //    whole Roof_static group anymore (it now holds the ceiling drywall
+    //    too), so the visibility kill is per-mesh by name prefix.
     const slabFinishedAt = t0 + 3.5 + Math.max(0, slabs.length - 1) * 0.1 + 1.0;
-    const trussStatic = findByName(m, 'Roof_static');
-    if (trussStatic) tl.set(trussStatic, { visible: false }, slabFinishedAt);
     m.traverse((o) => {
-      if (o.name && (o.name.startsWith('rafter_west_') || o.name.startsWith('rafter_east_'))) {
+      if (!o.name) return;
+      if (o.name.startsWith('chord_') ||
+          o.name.startsWith('kingpost_') ||
+          o.name.startsWith('rafter_west_') ||
+          o.name.startsWith('rafter_east_')) {
         tl.set(o, { visible: false }, slabFinishedAt);
       }
     });

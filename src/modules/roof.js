@@ -30,6 +30,10 @@ import { MODULE, INCH } from '../utils/dimensions.js';
 
 const framingMat = () => shared('framing', () => matte(COLORS.framing));
 const drywallMat = () => shared('drywall', () => matte(COLORS.drywall));
+// Roof decking — plywood/OSB sheathing on top of rafters, sandwiched between
+// the framing and the shingle slabs. Same color as exterior wall sheathing
+// (a warm OSB tan) so the two layers read as the same material.
+const deckingMat = () => shared('decking', () => matte('#A88E66', { roughness: 0.9 }));
 
 /**
  * Build all roof framing + shingle slabs for the module, split across the
@@ -162,37 +166,46 @@ export function buildModuleRoof({ side = 'roof' } = {}) {
     }
   }
 
-  // --- Two shingle slabs, one per pitch face, attached to matching hinge --
-  // Each slab covers from peak down to one eave. We build it once in the same
-  // local-frame convention used for the rafters (anchored at eave end, sloping
-  // up to peak via rotation.z).
+  // --- Roof decking + shingle slabs, one each per pitch face ----------------
+  // Stack from bottom up:   rafters → decking (OSB) → shingle slab.
+  // Decking installs in Stage 8 (after the truss assembly settles) and the
+  // shingles arrive in Stage 9. Both share the same eave-anchored geometry
+  // pattern as the rafters so rotation.z = rafterAngle slopes them up the
+  // pitch.
   const slabMat = shared('shingle', () => shingle());
+  const deckT   = 0.05;            // ~5/8 in plywood/OSB
+  const slabT   = 0.08;            // shingle layer
 
-  // West slab → WEST HINGE
-  {
-    const geo = new THREE.BoxGeometry(rafterLen, 0.08, L * 1.04);
-    geo.translate(rafterLen / 2, 0, 0);              // anchor at -X end
-    geo.translate(0, chordH + 0.08 / 2, 0);          // sit on top of rafter
-    const slab = new THREE.Mesh(geo, slabMat);
-    slab.position.set(0, chordH, 0);
-    slab.rotation.z = +rafterAngle;
-    slab.castShadow = slab.receiveShadow = true;
-    slab.name = 'roof_slab_west';
-    hingeWest.add(slab);
-  }
+  const buildDeck = (rotZ, name) => {
+    const geo = new THREE.BoxGeometry(rafterLen, deckT, L * 1.04);
+    geo.translate(rafterLen / 2, 0, 0);              // anchor at -X end (eave)
+    geo.translate(0, chordH + deckT / 2, 0);         // sit just on top of rafter
+    const deck = new THREE.Mesh(geo, deckingMat());
+    deck.position.set(0, chordH, 0);
+    deck.rotation.z = rotZ;
+    deck.castShadow = deck.receiveShadow = true;
+    deck.name = name;
+    return deck;
+  };
 
-  // East slab → EAST HINGE
-  {
-    const geo = new THREE.BoxGeometry(rafterLen, 0.08, L * 1.04);
+  const buildSlab = (rotZ, name) => {
+    const geo = new THREE.BoxGeometry(rafterLen, slabT, L * 1.04);
     geo.translate(rafterLen / 2, 0, 0);
-    geo.translate(0, chordH + 0.08 / 2, 0);
+    // Sit ABOVE the decking layer (deckT) so the shingle slabs can later
+    // drop into place on top of the freshly-laid deck without Z-fighting.
+    geo.translate(0, chordH + deckT + slabT / 2, 0);
     const slab = new THREE.Mesh(geo, slabMat);
     slab.position.set(0, chordH, 0);
-    slab.rotation.z = Math.PI - rafterAngle;
+    slab.rotation.z = rotZ;
     slab.castShadow = slab.receiveShadow = true;
-    slab.name = 'roof_slab_east';
-    hingeEast.add(slab);
-  }
+    slab.name = name;
+    return slab;
+  };
+
+  hingeWest.add(buildDeck(+rafterAngle,            'roof_deck_west'));
+  hingeWest.add(buildSlab(+rafterAngle,            'roof_slab_west'));
+  hingeEast.add(buildDeck(Math.PI - rafterAngle,   'roof_deck_east'));
+  hingeEast.add(buildSlab(Math.PI - rafterAngle,   'roof_slab_east'));
 
   // --- GABLE-END WALLS (triangular fills closing off +Z and -Z gable ends) ---
   // Without these, the front and back of the gable have empty triangles between
