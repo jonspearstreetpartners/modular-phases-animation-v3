@@ -210,23 +210,40 @@ export function buildModuleRoughIn({ side = 'A' } = {}) {
   const yMid  = subfloorTop + MODULE.wallHeight * 0.55;
   const yHigh = subfloorTop + MODULE.wallHeight - 0.6;
 
-  // Per user request: NO MEP rough-in in/near the interior partition. Stage 6 only
-  // shows runs that are clearly along EXTERIOR walls or the center ceiling trunk.
-  // (Earlier mid-module branch runs were removed — they read as "in the partition.")
+  // Per user request: in modular factory practice, in-wall MEP rough-in is
+  // installed from OUTSIDE the module — workers stand on the factory floor
+  // and run wires/pipes against the OUTER face of the studs before exterior
+  // sheathing goes on. Stage 5 ships walls with insulation between studs
+  // already installed, so to read as "installed from outside" the in-wall
+  // runs sit just OUTBOARD of the insulation (between the batts and the
+  // outer stud face) where the camera sees them during the Stage 6 push-in.
+  //
+  // Wall geometry: outer stud face at module-X = ±W/2, insulation centered
+  // in the cavity (~0.175 ft each side of wall-local Z=0). A run x of
+  // ±(W/2 - 0.05) lands the run a hair inside the outer face, in front of
+  // the insulation. Module B mirrors A via `inboard`.
 
-  // --- ELECTRICAL — single full-length run along the outer long wall ---
+  const wallEdgeX = (W / 2) - 0.05;          // distance from module center
+
+  // --- ELECTRICAL — main feed along the OUTER long wall + a short vertical
+  //     drop to a "panel" location, both on the exterior face. ---
   const elecRuns = [
-    { length: L * 0.85, axis: 'z', pos: [-inboard * (W/2 - 0.4), yMid, -L * 0.4], type: 'electrical' },
+    { length: L * 0.85, axis: 'z', pos: [-inboard * wallEdgeX, yMid,  -L * 0.4 ], type: 'electrical' },
+    // Vertical drop near one end (top plate down to outlet height)
+    { length: MODULE.wallHeight * 0.6, axis: 'y',
+      pos: [-inboard * wallEdgeX, subfloorTop + 0.6, -L * 0.32], type: 'electrical' },
   ];
 
-  // --- HVAC — main supply trunk in center ceiling (no mid-module branches) ---
+  // --- HVAC — main supply trunk in center ceiling (stays inside the module
+  //     since it's a duct in the ceiling cavity, not in a wall). ---
   const hvacRuns = [
     { length: L * 0.85, axis: 'z', pos: [0, yHigh, -L * 0.4], type: 'hvac', radius: 0.35 },
   ];
 
-  // --- PLUMBING — supply line along the wet (marriage-wall-side) long wall ---
+  // --- PLUMBING — supply line along the OPPOSITE outer long wall, also on
+  //     the exterior face so it reads as "installed from outside." ---
   const plumbRuns = [
-    { length: L * 0.6, axis: 'z', pos: [inboard * (W/2 - 0.5), yLow, -L * 0.25], type: 'plumbing' },
+    { length: L * 0.6, axis: 'z', pos: [inboard * wallEdgeX, yLow, -L * 0.25], type: 'plumbing' },
   ];
 
   const allRuns = [...elecRuns, ...hvacRuns, ...plumbRuns];
