@@ -253,49 +253,49 @@ export function stageMEPRoughIn(tl, refs, t0) {
 }
 
 // ============================================================================
-// STAGE 8 — Roof framing (5.5 sec)
-// (Now placed AFTER insulation/drywall per user reorder.)
+// STAGE 8 — Roof + ceiling drop-in (5.5 sec)
+// (Per user request: the entire truss assembly is pre-fabricated WITH the
+//  ceiling drywall already attached. The whole unit lowers as one piece —
+//  no per-truss reveal — to match factory practice where pre-assembled
+//  trusses are craned into position in a single move.)
 // ============================================================================
 export function stageRoof(tl, refs, t0) {
-  announce(tl, t0, 8, 'Ceiling, roof framing & marriage wall prep');
+  announce(tl, t0, 7, 'Roof & ceiling drop-in');
+
+  const DROP_HEIGHT = 22;          // ft above rest position when offstage
+  const DROP_DURATION = 1.6;       // ft
+  const DROP_DELAY = 0.3;          // small pause after the stage label appears
 
   for (const m of [refs.moduleA, refs.moduleB]) {
-    const roof = findByName(m, "Roof");
+    const roof = findByName(m, 'Roof');
     if (!roof) continue;
-    tl.set(roof, { visible: true }, t0);
 
-    // v3 roof is split across 3 sub-groups (Roof_static + Roof_hinge_west +
-    // Roof_hinge_east). For the truss-drop animation we want individual truss
-    // members to drop, grouped by trussIndex so the chord, king-post, and the
-    // two rafters of one truss arrive together. Hinges themselves don't move
-    // here — only their CHILD positions (which are in hinge-local coords)
-    // animate, so the eave pivots stay put.
-    const byIndex = new Map();
+    // Lift the whole roof group (trusses + ceiling drywall + hinges + slabs)
+    // up by DROP_HEIGHT, reveal it, then ease the entire unit straight down
+    // to its rest position. Position-based animation keeps everything inside
+    // the group — hinge pivots, slab anchors, rafter angles — perfectly
+    // aligned with the trusses on the way down.
+    const restY = roof.position.y;
+    tl.set(roof.position, { y: restY + DROP_HEIGHT }, t0);
+    tl.set(roof,          { visible: true }, t0 + DROP_DELAY);
+    tl.to (roof.position, {
+      y: restY,
+      duration: DROP_DURATION,
+      ease: 'power2.out',
+    }, t0 + DROP_DELAY);
+
+    // Roof slabs (shingle layer) are handled in Stage 9 — keep them hidden
+    // here even though the roof Group is now visible.
     roof.traverse((o) => {
-      const idx = o.userData?.trussIndex;
-      if (idx === undefined) return;
-      if (o.name && o.name.startsWith('roof_slab')) return;     // slabs handled in Stage 9
-      if (!byIndex.has(idx)) byIndex.set(idx, []);
-      byIndex.get(idx).push(o);
-    });
-
-    const indices = [...byIndex.keys()].sort((a, b) => a - b);
-    indices.forEach((idx, order) => {
-      const members = byIndex.get(idx);
-      members.forEach((mesh) => {
-        const restY = mesh.position.y;
-        tl.set(mesh.position,    { y: restY + 25 }, t0);
-        tl.set(mesh,             { visible: false }, t0);
-        tl.set(mesh,             { visible: true  }, t0 + 0.2 + order * 0.15);
-        tl.to (mesh.position,    { y: restY, duration: 0.8, ease: 'power2.out' },
-                                                       t0 + 0.2 + order * 0.15);
-      });
+      if (o.name && o.name.startsWith('roof_slab')) {
+        tl.set(o, { visible: false }, t0);
+      }
     });
 
     // Gable-end siding fills are NOT revealed here. They get installed in
-    // Stage 12 (site assembly) after stacking, because if they appeared during
-    // Stage 8 they would block the rafter hinges from folding flat in Stage 11
-    // for transport.
+    // Stage 12 (site assembly) after stacking, because if they appeared
+    // during Stage 8 they would block the rafter hinges from folding flat
+    // in Stage 11 for transport.
     m.traverse((o) => {
       if (o.name && o.name.startsWith('gable_')) {
         tl.set(o, { visible: false }, t0);
@@ -305,37 +305,25 @@ export function stageRoof(tl, refs, t0) {
 }
 
 // ============================================================================
-// STAGE 7 — Insulation & drywall (4 sec)
-// (Now placed BEFORE roof framing per user reorder.)
+// STAGE 7 — (Eliminated)
 // ============================================================================
-export function stageInsulationDrywall(tl, refs, t0) {
-  announce(tl, t0, 7, 'Insulation');
-
-  for (const m of [refs.moduleA, refs.moduleB]) {
-    const insulation = findByName(m, 'Insulation');
-
-    // INSULATION: fade in with subtle scale-up, staggered
-    // (Drywall is no longer animated here — it ships pre-installed with the
-    // walls in Stage 5 per user request.)
-    if (insulation) {
-      tl.set(insulation, { visible: true }, t0);
-      const batts = insulation.children;
-      batts.forEach((b, i) => {
-        tl.set(b.scale,    { x: 0.92, y: 0.92, z: 0.92 }, t0);
-        tl.set(b.material, { opacity: 0 }, t0);
-        tl.to(b.material, { opacity: 1.0, duration: 0.4 }, t0 + 0.1 + i * 0.04);
-        tl.to(b.scale, { x: 1, y: 1, z: 1, duration: 0.4, ease: 'power1.out' },
-          t0 + 0.1 + i * 0.04);
-      });
-    }
-  }
+// Insulation now ships pre-installed inside each exterior wall (see
+// walls.js / addInsulationToWall). It's visible from the moment the wall
+// slides into Stage 5, so there's no longer any "Insulation" reveal.
+//
+// The function is kept (as a no-op) so the timeline composer can still
+// reference it without conditional logic. The 4-s slot it used to occupy
+// is now a quiet camera-only beat between MEP rough-in (Stage 6) and the
+// roof drop-in (Stage 8).
+export function stageInsulationDrywall(_tl, _refs, _t0) {
+  // intentionally empty
 }
 
 // ============================================================================
 // STAGE 9 — Exterior envelope (5 sec)
 // ============================================================================
 export function stageExterior(tl, refs, t0) {
-  announce(tl, t0, 9, 'Windows, exterior finish & roofing');
+  announce(tl, t0, 8, 'Windows, exterior finish & roofing');
 
   for (const m of [refs.moduleA, refs.moduleB]) {
     const ext = findByName(m, 'Exterior');
@@ -435,7 +423,7 @@ export function stageExterior(tl, refs, t0) {
 import { MODULE } from '../utils/dimensions.js';
 
 export function stageInteriorComplete(tl, refs, t0) {
-  announce(tl, t0, 10, 'Interior finish');
+  announce(tl, t0, 9, 'Interior finish');
 
   for (const m of [refs.moduleA, refs.moduleB]) {
     const inter = findByName(m, 'Interior');
@@ -461,7 +449,7 @@ export function stageInteriorComplete(tl, refs, t0) {
 //   4. Trucks + modules + trailers drive away in -Z together
 // ============================================================================
 export function stageTransport(tl, refs, t0) {
-  announce(tl, t0, 11, 'Transport');
+  announce(tl, t0, 10, 'Transport');
 
   // ---- 1) Fold rafter hinges DOWN inward (0.0 → 1.8s) ----
   // v3 roof: TWO hinges per module roof (Roof_hinge_west and Roof_hinge_east),
@@ -551,7 +539,7 @@ export function stageTransport(tl, refs, t0) {
 //   8) 16.5 → 19.0 Porch reveal piece-by-piece at SITE_X.
 // ============================================================================
 export function stageSiteStacking(tl, refs, t0) {
-  announce(tl, t0, 12, 'Site assembly');
+  announce(tl, t0, 11, 'Site assembly');
 
   const truckA  = refs.truckA;
   const truckB  = refs.truckB;

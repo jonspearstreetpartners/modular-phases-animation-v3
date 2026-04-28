@@ -19,7 +19,8 @@ import { buildModuleFloorFrame, buildModuleSubfloor } from './modules/floor.js';
 import { buildModuleWalls } from './modules/walls.js';
 import { buildModuleRoof } from './modules/roof.js';
 import { buildModuleFloorMEP, buildModuleStubs, buildModuleRoughIn } from './modules/mep.js';
-import { buildModuleInsulation } from './modules/insulation.js';
+// Insulation is now built into each exterior wall (see walls.js); no
+// separate Insulation group / Stage 7 reveal anymore.
 import { buildModuleExterior } from './modules/exterior.js';
 import { buildModuleInterior } from './modules/interior.js';
 import { buildTruckAndTrailer } from './modules/truck.js';
@@ -85,10 +86,15 @@ function buildModule({ name, side, factoryX, withRoof = false }) {
   group.add(buildModuleFloorMEP({ side }));           // Stage 2
   group.add(buildModuleSubfloor());                   // Stage 3
   group.add(buildModuleStubs({ side }));              // Stage 4
-  group.add(buildModuleWalls());                      // Stage 5
+  group.add(buildModuleWalls());                      // Stage 5 (walls now
+                                                       //          ship with
+                                                       //          insulation)
   group.add(buildModuleRoughIn({ side }));            // Stage 6
-  group.add(buildModuleInsulation());                 // Stage 7
   if (withRoof) group.add(buildModuleRoof({ side })); // Stage 8 — UPPER only
+                                                       //   (now lowered as
+                                                       //   one pre-finished
+                                                       //   unit incl. ceiling
+                                                       //   drywall)
   group.add(buildModuleExterior({ side }));           // Stage 9
   group.add(buildModuleInterior({ side }));           // Stage 10
 
@@ -148,9 +154,8 @@ const STAGE_GROUP_NAMES = [
   'MEP_FloorRough',      // Stage 2
   'Subfloor',            // Stage 3
   'MEP_Stubs',           // Stage 4
-  'Walls',               // Stage 5
+  'Walls',               // Stage 5 (carries insulation + interior drywall)
   'MEP_RoughIn',         // Stage 6
-  'Insulation',          // Stage 7
   'Exterior',            // Stage 9
   'Interior',            // Stage 10
 ];
@@ -314,12 +319,12 @@ const STAGE_CHIPS = [
   { time: STAGE_TIMES.s4,  num: 4,  label: 'Fixtures' },
   { time: STAGE_TIMES.s5,  num: 5,  label: 'Walls' },
   { time: STAGE_TIMES.s6,  num: 6,  label: 'MEP Rough-in' },
-  { time: STAGE_TIMES.s7,  num: 7,  label: 'Insulation' },
-  { time: STAGE_TIMES.s8,  num: 8,  label: 'Roof' },
-  { time: STAGE_TIMES.s9,  num: 9,  label: 'Exterior' },
-  { time: STAGE_TIMES.s10, num: 10, label: 'Interior' },
-  { time: STAGE_TIMES.s11, num: 11, label: 'Transport' },
-  { time: STAGE_TIMES.s12, num: 12, label: 'Site Assembly' },
+  // Stage 7 ("Insulation") was removed — insulation now ships in the walls.
+  { time: STAGE_TIMES.s8,  num: 7,  label: 'Roof' },
+  { time: STAGE_TIMES.s9,  num: 8,  label: 'Exterior' },
+  { time: STAGE_TIMES.s10, num: 9,  label: 'Interior' },
+  { time: STAGE_TIMES.s11, num: 10, label: 'Transport' },
+  { time: STAGE_TIMES.s12, num: 11, label: 'Site Assembly' },
 ];
 
 // Build chip buttons. Each click pauses and seeks to that stage's start time.

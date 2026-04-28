@@ -10,7 +10,8 @@
 //   4. Subfloor MEP & fixtures            (12.0 → 16.0)
 //   5. Wall framing (HERO)                (16.0 → 22.5)
 //   6. MEP rough-in (in-wall)             (22.5 → 27.5)
-//   7. Insulation                         (27.5 → 31.5)
+//   (eliminated — insulation now ships pre-installed in the walls;
+//   this 4-s slot is a quiet camera-only beat between Stages 6 and 8)
 //   8. Roof framing                       (31.5 → 37.0)
 //   9. Windows, exterior finish & roof    (37.0 → 42.0)
 //  10. Interior reveal                    (42.0 → 47.0)

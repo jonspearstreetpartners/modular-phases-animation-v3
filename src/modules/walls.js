@@ -14,6 +14,17 @@ const framingMat = () => shared('framing', () => matte(COLORS.framing));
 // both faces of the interior partition. (Partition no longer carries insulation
 // — drywall on both sides hides anything in the cavity.)
 const drywallMat = () => shared('drywall', () => matte(COLORS.drywall));
+// Insulation lives between studs of each EXTERIOR wall. Each batt gets its
+// own material instance — the per-batt fade/scale animation in earlier
+// versions of the timeline staggered material.opacity, which would conflict
+// if all batts shared one material. Today the walls (and their insulation)
+// just slide in as a unit during Stage 5 — no per-batt opacity tweens —
+// but keeping unique materials costs nothing and preserves flexibility.
+const newInsulationMat = () => matte(COLORS.insulation, {
+  transparent: true,
+  opacity: 1.0,
+  roughness: 0.95,
+});
 
 /**
  * Build a single stud wall. Length axis = local X. Bottom of bottom plate at y=0.
@@ -98,6 +109,48 @@ function addDrywallToPartition(wall, length, height) {
 }
 
 /**
+ * Insert insulation batts between the studs of one exterior wall (built by
+ * buildStudWall), using the wall's LOCAL coordinate frame:
+ *   - X = wall length axis
+ *   - Y = wall height
+ *   - Z = wall depth (stud thickness)
+ *
+ * One batt per cavity (the gap between two adjacent studs). Each batt fits
+ * floor-plate-to-top-plate vertically and just inside the stud thickness on Z
+ * so it reads as sitting in the cavity. Counts/spacing match buildStudWall's
+ * stud layout exactly.
+ *
+ * Per-user request: insulation ships pre-installed in the wall, so it slides
+ * into Stage 5 as part of the wall and is visible from the moment the wall
+ * arrives. The previous standalone Insulation group + Stage 7 animation is
+ * gone.
+ */
+function addInsulationToWall(wall, length, height, studSpacing = MODULE.studSpacing) {
+  const sW  = MODULE.studWidth;
+  const sD  = MODULE.studDepth;
+  const battH = height - MODULE.bottomPlateHeight - 2 * MODULE.topPlateHeight;
+  const battY = MODULE.bottomPlateHeight + battH / 2;
+
+  const innerLen  = length - sW;
+  const intervals = Math.max(1, Math.round(innerLen / studSpacing));
+  const actualSp  = innerLen / intervals;
+  const battLen   = actualSp - sW;        // gap between adjacent studs (along X)
+  const battDepth = sD - 0.05;            // sits within the wall cavity
+
+  for (let i = 0; i < intervals; i++) {
+    // Center of each cavity = midway between adjacent stud centers
+    const x = -innerLen / 2 + (i + 0.5) * actualSp;
+    const batt = new THREE.Mesh(
+      new THREE.BoxGeometry(battLen, battH, battDepth),
+      newInsulationMat(),
+    );
+    batt.position.set(x, battY, 0);
+    batt.name = `batt_${i}`;
+    wall.add(batt);
+  }
+}
+
+/**
  * Attach a single drywall panel to one Z face of an exterior wall. Used to ship
  * exterior walls into Stage 5 with the interior-facing side already drywalled
  * (factory pre-finishing). The local Z face is selected by `faceSign` (+1 or -1).
@@ -164,9 +217,12 @@ export function buildModuleWalls() {
   // perfect, no per-side sign flipping required.
   for (const [sign, name] of [[-1, 'longWest'], [1, 'longEast']]) {
     const wall = buildStudWall({ length: L, height: wH });
-    // Pre-installed drywall on the interior face. After the placer's Y rotation,
-    // local +Z maps toward module-center (interior). Both long walls use +1 so
-    // studs remain visible from the outboard / marriage-gap side.
+    // Pre-installed insulation between studs (visible from the outboard side
+    // where there's no interior drywall yet) + drywall on the interior face.
+    // After the placer's Y rotation, local +Z maps toward module-center
+    // (interior). Both long walls use +1 so studs/insulation remain visible
+    // from the outboard / marriage-gap side.
+    addInsulationToWall(wall, L, wH);
     addInteriorDrywall(wall, L, wH, +1);
     const tilt = wrapInTilt(wall, name, +Math.PI / 2);
     const placer = new THREE.Group();
@@ -184,7 +240,9 @@ export function buildModuleWalls() {
   const shortLen = W - 2 * sD;
   for (const [sign, name] of [[-1, 'shortNorth'], [1, 'shortSouth']]) {
     const wall = buildStudWall({ length: shortLen, height: wH });
+    // Pre-installed insulation between studs + interior drywall.
     // Interior face is local +Z for north (sign=-1) and -Z for south (sign=+1)
+    addInsulationToWall(wall, shortLen, wH);
     addInteriorDrywall(wall, shortLen, wH, -sign);
     const tilt = wrapInTilt(wall, name, sign * Math.PI / 2);
     const placer = new THREE.Group();

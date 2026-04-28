@@ -26,9 +26,10 @@
 import * as THREE from 'three';
 import { COLORS } from '../utils/colors.js';
 import { matte, shared, shingle } from '../utils/materials.js';
-import { MODULE } from '../utils/dimensions.js';
+import { MODULE, INCH } from '../utils/dimensions.js';
 
 const framingMat = () => shared('framing', () => matte(COLORS.framing));
+const drywallMat = () => shared('drywall', () => matte(COLORS.drywall));
 
 /**
  * Build all roof framing + shingle slabs for the module, split across the
@@ -58,6 +59,24 @@ export function buildModuleRoof({ side = 'roof' } = {}) {
   const staticGroup = new THREE.Group();
   staticGroup.name = 'Roof_static';
   root.add(staticGroup);
+
+  // Ceiling drywall — a flat panel covering the full module footprint at the
+  // top-of-walls plane (y = y0). Per user request, the truss assembly ships
+  // pre-finished with ceiling drywall already attached, so the entire
+  // roof+ceiling unit lowers as one piece in Stage 8 (no per-truss drop).
+  // Sits a hair below the bottom chords so the seam reads as drywall stuck
+  // to the underside of the chord.
+  {
+    const dwT = 0.5 * INCH;
+    const ceiling = new THREE.Mesh(
+      new THREE.BoxGeometry(W, dwT, L),
+      drywallMat(),
+    );
+    ceiling.position.set(0, y0 - dwT / 2, 0);
+    ceiling.receiveShadow = true;
+    ceiling.name = 'ceiling_drywall';
+    staticGroup.add(ceiling);
+  }
 
   const hingeWest = new THREE.Group();
   hingeWest.name = 'Roof_hinge_west';
