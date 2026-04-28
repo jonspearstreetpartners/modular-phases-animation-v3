@@ -655,6 +655,21 @@ export function stageTransport(tl, refs, t0) {
     }, SLIDE_IN_AT);
   }
 
+  // ---- 2b) Modules rise from factory floor onto trailer deck ----
+  // Trailer deck top sits at world Y = 3.75 (TRAILER_DECK_TOP_Y in
+  // truck.js). Lift each module's local origin (its joist-frame
+  // bottom) to the deck top so the trailer reads as actually
+  // carrying the module.
+  const TRAILER_DECK_TOP_Y = 3.75;
+  for (const m of [refs.moduleA, refs.moduleB]) {
+    if (!m) continue;
+    tl.to(m.position, {
+      y: TRAILER_DECK_TOP_Y,
+      duration: SLIDE_IN_DUR,
+      ease: 'power2.out',
+    }, SLIDE_IN_AT);
+  }
+
   // ---- 3) (no hold; transition straight to drive-away) ----
 
   // ---- 4) Trucks + modules drive away in -Z (2.6 → 6.0s) — sped up ----

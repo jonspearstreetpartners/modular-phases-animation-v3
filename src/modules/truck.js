@@ -18,7 +18,14 @@ import { MODULE } from '../utils/dimensions.js';
 const TRAILER_LEN = 50;        // ft  (long enough to carry 44-ft module + overhang)
 const TRAILER_W   = 8.5;
 const TRAILER_T   = 0.5;       // deck thickness
-const TRAILER_Y   = -0.3;      // deck center y (trailer sits just under the module's carrier beams)
+// Deck Y is now ABOVE the wheels (was -0.3 in v1 when modules had carrier
+// beams below grade — that left the deck underground in v3 and invisible).
+// Wheel top sits at 2*WHEEL_R = 3.0; the deck is centered at 3.5 so it
+// floats just above the wheel top with deck top at 3.75 — that's the Y
+// the modules are lifted onto in stageTransport so they read as "loaded
+// on the trailer."
+export const TRAILER_Y   = 3.5;
+export const TRAILER_DECK_TOP_Y = TRAILER_Y + TRAILER_T / 2;     // 3.75
 
 const CAB_LEN  = 11;
 const CAB_W    = 8;
