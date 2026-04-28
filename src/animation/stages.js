@@ -143,7 +143,7 @@ export function stageFoundationConstruction(tl, refs, t0) {
 // STAGE 1 — Floor system & module base (5.5 sec)
 // ============================================================================
 export function stageFloor(tl, refs, t0) {
-  announce(tl, t0, 1, 'Floor system & module base');
+  announce(tl, t0, 2, 'Floor system & module base');
   // Stage 1 — same body as before
 
   for (const m of [refs.moduleA, refs.moduleB]) {
@@ -184,7 +184,7 @@ export function stageFloor(tl, refs, t0) {
 // matching scale[axis] from 0 → 1 to "draw" the run from one end.
 // ============================================================================
 export function stageFloorMEP(tl, refs, t0) {
-  announce(tl, t0, 2, 'Floor MEP rough-in');
+  announce(tl, t0, 3, 'Floor MEP rough-in');
 
   for (const m of [refs.moduleA, refs.moduleB]) {
     const rough = findByName(m, 'MEP_FloorRough');
@@ -218,7 +218,7 @@ export function stageFloorMEP(tl, refs, t0) {
 // STAGE 3 — Subfloor deck (3 sec)
 // ============================================================================
 export function stageSubfloor(tl, refs, t0) {
-  announce(tl, t0, 3, 'Subfloor deck');
+  announce(tl, t0, 4, 'Subfloor deck');
 
   for (const m of [refs.moduleA, refs.moduleB]) {
     const sf = findByName(m, 'Subfloor');
@@ -246,7 +246,7 @@ export function stageSubfloor(tl, refs, t0) {
 // STAGE 4 — Subfloor MEP & floor-mounted fixtures (4 sec)
 // ============================================================================
 export function stageMEPStubs(tl, refs, t0) {
-  announce(tl, t0, 4, 'Subfloor MEP & floor-mounted fixtures');
+  announce(tl, t0, 5, 'Subfloor MEP & floor-mounted fixtures');
 
   for (const m of [refs.moduleA, refs.moduleB]) {
     const stubs = findByName(m, 'MEP_Stubs');
@@ -275,7 +275,7 @@ export function stageMEPStubs(tl, refs, t0) {
 // (Replaces earlier flop-up-from-floor animation per user request.)
 // ============================================================================
 export function stageWalls(tl, refs, t0) {
-  announce(tl, t0, 5, 'Wall framing');
+  announce(tl, t0, 6, 'Wall framing');
 
   const SLIDE_DISTANCE = 50;        // feet of horizontal travel before arriving at rest
 
@@ -321,7 +321,7 @@ export function stageWalls(tl, refs, t0) {
 // STAGE 6 — MEP rough-in (in-wall) (5 sec)
 // ============================================================================
 export function stageMEPRoughIn(tl, refs, t0) {
-  announce(tl, t0, 6, 'MEP rough-in');
+  announce(tl, t0, 7, 'MEP rough-in');
 
   for (const m of [refs.moduleA, refs.moduleB]) {
     const rough = findByName(m, 'MEP_RoughIn');
@@ -369,7 +369,7 @@ export function stageMEPRoughIn(tl, refs, t0) {
 //  here, so Stage 9 only handles the exterior WALL envelope.)
 // ============================================================================
 export function stageRoof(tl, refs, t0) {
-  announce(tl, t0, 7, 'Roof & ceiling drop-in');
+  announce(tl, t0, 8, 'Roof & ceiling drop-in');
 
   const DROP_HEIGHT      = 22;     // ft above rest position when offstage
   const DROP_DURATION    = 1.6;    // truss assembly fall duration
@@ -504,7 +504,7 @@ export function stageInsulationDrywall(_tl, _refs, _t0) {
 // STAGE 9 — Exterior envelope (5 sec)
 // ============================================================================
 export function stageExterior(tl, refs, t0) {
-  announce(tl, t0, 8, 'Windows & exterior finish');
+  announce(tl, t0, 9, 'Windows & exterior finish');
 
   for (const m of [refs.moduleA, refs.moduleB]) {
     const ext = findByName(m, 'Exterior');
@@ -580,7 +580,7 @@ export function stageExterior(tl, refs, t0) {
 import { MODULE } from '../utils/dimensions.js';
 
 export function stageInteriorComplete(tl, refs, t0) {
-  announce(tl, t0, 9, 'Interior finish');
+  announce(tl, t0, 10, 'Interior finish');
 
   for (const m of [refs.moduleA, refs.moduleB]) {
     const inter = findByName(m, 'Interior');
@@ -606,7 +606,7 @@ export function stageInteriorComplete(tl, refs, t0) {
 //   4. Trucks + modules + trailers drive away in -Z together
 // ============================================================================
 export function stageTransport(tl, refs, t0) {
-  announce(tl, t0, 10, 'Transport');
+  announce(tl, t0, 11, 'Transport');
 
   // ---- 1) Fold rafter hinges DOWN inward (0.0 → 1.8s) ----
   // v3 roof: TWO hinges per module roof (Roof_hinge_west and Roof_hinge_east),
@@ -697,7 +697,7 @@ export function stageTransport(tl, refs, t0) {
 //   8) 16.5 → 19.0 Porch reveal piece-by-piece at SITE_X.
 // ============================================================================
 export function stageSiteStacking(tl, refs, t0) {
-  announce(tl, t0, 11, 'Site assembly');
+  announce(tl, t0, 12, 'Site assembly');
 
   const truckA  = refs.truckA;
   const truckB  = refs.truckB;

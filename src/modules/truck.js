@@ -69,17 +69,8 @@ export function buildTruckAndTrailer({ side = 'A' } = {}) {
   deck.name = 'trailer_deck';
   group.add(deck);
 
-  // Trailer side rails (thin strips along the long edges)
-  for (const xs of [-1, 1]) {
-    const rail = new THREE.Mesh(
-      new THREE.BoxGeometry(0.2, 0.5, TRAILER_LEN),
-      trailerMat(),
-    );
-    rail.position.set(xs * (TRAILER_W / 2 - 0.1), TRAILER_Y + TRAILER_T / 2 + 0.25, 0);
-    rail.castShadow = true;
-    rail.name = `trailer_rail_${xs > 0 ? 'east' : 'west'}`;
-    group.add(rail);
-  }
+  // (Trailer side rails removed — per user request the trailer reads as
+  //  a flat-deck rig, just the solid deck + wheels with no edge rails.)
 
   // Trailer wheels — 3 axle pairs near the back, 1 near the front kingpin.
   // Axle Y = WHEEL_R places the wheel BOTTOM at the ground plane (Y=0)

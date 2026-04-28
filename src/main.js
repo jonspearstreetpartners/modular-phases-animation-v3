@@ -30,7 +30,7 @@ import { buildPorch } from './modules/porch.js';
 import { buildLandscape } from './modules/landscape.js';
 import { buildSitework } from './modules/sitework.js';
 
-import { buildTimeline, STAGE_TIMES } from './animation/timeline.js';
+import { buildTimeline, STAGE_TIMES, SITEWORK_TIMES } from './animation/timeline.js';
 
 // ---------- Debug flag ----------
 const DEBUG = new URLSearchParams(location.search).has('debug');
@@ -324,18 +324,19 @@ function fmt(t) {
 // Stage definitions for chips — labels match the in-animation announcements
 // so users can recognize them. Sorted by start time.
 const STAGE_CHIPS = [
-  { time: STAGE_TIMES.s1,  num: 1,  label: 'Floor' },
-  { time: STAGE_TIMES.s2,  num: 2,  label: 'Floor MEP' },
-  { time: STAGE_TIMES.s3,  num: 3,  label: 'Subfloor' },
-  { time: STAGE_TIMES.s4,  num: 4,  label: 'Fixtures' },
-  { time: STAGE_TIMES.s5,  num: 5,  label: 'Walls' },
-  { time: STAGE_TIMES.s6,  num: 6,  label: 'MEP Rough-in' },
+  { time: SITEWORK_TIMES.sw1, num: 1,  label: 'Site Work' },
+  { time: STAGE_TIMES.s1,     num: 2,  label: 'Floor' },
+  { time: STAGE_TIMES.s2,     num: 3,  label: 'Floor MEP' },
+  { time: STAGE_TIMES.s3,     num: 4,  label: 'Subfloor' },
+  { time: STAGE_TIMES.s4,     num: 5,  label: 'Fixtures' },
+  { time: STAGE_TIMES.s5,     num: 6,  label: 'Walls' },
+  { time: STAGE_TIMES.s6,     num: 7,  label: 'MEP Rough-in' },
   // Stage 7 ("Insulation") was removed — insulation now ships in the walls.
-  { time: STAGE_TIMES.s8,  num: 7,  label: 'Roof' },
-  { time: STAGE_TIMES.s9,  num: 8,  label: 'Exterior' },
-  { time: STAGE_TIMES.s10, num: 9,  label: 'Interior' },
-  { time: STAGE_TIMES.s11, num: 10, label: 'Transport' },
-  { time: STAGE_TIMES.s12, num: 11, label: 'Site Assembly' },
+  { time: STAGE_TIMES.s8,     num: 8,  label: 'Roof' },
+  { time: STAGE_TIMES.s9,     num: 9,  label: 'Exterior' },
+  { time: STAGE_TIMES.s10,    num: 10, label: 'Interior' },
+  { time: STAGE_TIMES.s11,    num: 11, label: 'Transport' },
+  { time: STAGE_TIMES.s12,    num: 12, label: 'Site Assembly' },
 ];
 
 // Build chip buttons. Each click pauses and seeks to that stage's start time.
