@@ -328,12 +328,13 @@ export function updateCallouts(refs, camera, _renderer) {
                              { x: 0, y: 12, z: 0 });
   }
   // House-set header callout: Stage 12 (site assembly). Text-only banner
-  // (line + dot hidden via CSS), parked at LABEL_TOP_FRAC_HIGH on the
-  // right side. The geometry attributes are still updated each frame —
-  // they're a cheap no-op since the elements don't render — and target /
-  // offset stay set so future iterations can re-enable the line easily.
+  // (line + dot hidden via CSS). Parked at the BOTTOM-LEFT of the
+  // viewport (below the crane, leftSide = true at LABEL_TOP_FRAC_BOTTOM)
+  // per user request — keeps it out of the way of the module-moving
+  // action that fills the right side of the screen during the crane
+  // sequence.
   if (hsVisible) {
-    updateCalloutGroupSingle(_houseSetEl, LABEL_TOP_FRAC_HIGH, refs.moduleA, camera, w, h,
-                             { x: 0, y: 5, z: 0 });
+    updateCalloutGroupSingle(_houseSetEl, LABEL_TOP_FRAC_BOTTOM, refs.moduleA, camera, w, h,
+                             { x: 0, y: 5, z: 0 }, /* leftSide */ true);
   }
 }
