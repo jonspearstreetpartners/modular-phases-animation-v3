@@ -81,8 +81,14 @@ export function buildTruckAndTrailer({ side = 'A' } = {}) {
     group.add(rail);
   }
 
-  // Trailer wheels — 3 axle pairs near the back, 1 near the front kingpin
-  const trailerWheelY = TRAILER_Y - TRAILER_T / 2 - WHEEL_R + 0.1;
+  // Trailer wheels — 3 axle pairs near the back, 1 near the front kingpin.
+  // Axle Y = WHEEL_R places the wheel BOTTOM at the ground plane (Y=0)
+  // and the top at Y = 2*WHEEL_R = 3 ft, so the lower half of each wheel
+  // is visible below the module's floor frame (where joists live but
+  // there's no continuous siding) while the upper half stays inside the
+  // module's wall area. Earlier formula derived from TRAILER_Y put wheels
+  // at Y = -1.95 — entirely below the ground plane and invisible.
+  const trailerWheelY = WHEEL_R;
   const wheelOffsetX = TRAILER_W / 2 - 0.2;
   // Rear tridem (3 axles)
   for (let i = 0; i < 3; i++) {
@@ -96,15 +102,18 @@ export function buildTruckAndTrailer({ side = 'A' } = {}) {
   }
 
   // ---- Semi tractor (cab) — sits at +Z end, in front of trailer ----
+  // CAB_LIFT raises the entire cab so its bottom face sits at the wheel-
+  // top height (= 2*WHEEL_R). Without this lift the cab body would extend
+  // from Y=0 down through the now-visible wheels.
+  const CAB_LIFT = 2 * WHEEL_R;
   const cabZ = TRAILER_LEN / 2 + CAB_GAP + CAB_LEN / 2;
-  const cabY = CAB_H / 2;
 
   // Hood / lower cab (long box)
   const cabBody = new THREE.Mesh(
     new THREE.BoxGeometry(CAB_W, CAB_H * 0.7, CAB_LEN),
     cabMat(),
   );
-  cabBody.position.set(0, CAB_H * 0.35, cabZ);
+  cabBody.position.set(0, CAB_LIFT + CAB_H * 0.35, cabZ);
   cabBody.castShadow = true;
   cabBody.receiveShadow = true;
   cabBody.name = 'cab_body';
@@ -115,7 +124,7 @@ export function buildTruckAndTrailer({ side = 'A' } = {}) {
     new THREE.BoxGeometry(CAB_W * 0.95, CAB_H * 0.3, CAB_LEN * 0.55),
     cabMat(),
   );
-  sleeper.position.set(0, CAB_H * 0.85, cabZ - CAB_LEN * 0.20);
+  sleeper.position.set(0, CAB_LIFT + CAB_H * 0.85, cabZ - CAB_LEN * 0.20);
   sleeper.castShadow = true;
   sleeper.name = 'cab_sleeper';
   group.add(sleeper);
@@ -125,7 +134,7 @@ export function buildTruckAndTrailer({ side = 'A' } = {}) {
     new THREE.BoxGeometry(CAB_W * 0.85, CAB_H * 0.32, 0.15),
     windowMat(),
   );
-  windshield.position.set(0, CAB_H * 0.55, cabZ + CAB_LEN / 2 + 0.08);
+  windshield.position.set(0, CAB_LIFT + CAB_H * 0.55, cabZ + CAB_LEN / 2 + 0.08);
   windshield.name = 'cab_windshield';
   group.add(windshield);
 
@@ -135,7 +144,7 @@ export function buildTruckAndTrailer({ side = 'A' } = {}) {
       new THREE.BoxGeometry(0.15, CAB_H * 0.28, CAB_LEN * 0.5),
       windowMat(),
     );
-    sw.position.set(xs * (CAB_W / 2 + 0.08), CAB_H * 0.55, cabZ - CAB_LEN * 0.05);
+    sw.position.set(xs * (CAB_W / 2 + 0.08), CAB_LIFT + CAB_H * 0.55, cabZ - CAB_LEN * 0.05);
     sw.name = `cab_window_${xs > 0 ? 'east' : 'west'}`;
     group.add(sw);
   }
@@ -145,11 +154,12 @@ export function buildTruckAndTrailer({ side = 'A' } = {}) {
     new THREE.BoxGeometry(CAB_W * 0.7, CAB_H * 0.25, 0.2),
     grilleMat(),
   );
-  grille.position.set(0, CAB_H * 0.22, cabZ + CAB_LEN / 2 + 0.1);
+  grille.position.set(0, CAB_LIFT + CAB_H * 0.22, cabZ + CAB_LEN / 2 + 0.1);
   grille.name = 'cab_grille';
   group.add(grille);
 
-  // Cab wheels — 2 axles, simple
+  // Cab wheels — 2 axles, simple. Same trailerWheelY so all 10 wheels
+  // sit at the same ground level.
   const cabWheelY = trailerWheelY;
   const cabWheelOffsets = [cabZ - CAB_LEN * 0.35, cabZ + CAB_LEN * 0.30];
   for (let i = 0; i < cabWheelOffsets.length; i++) {
