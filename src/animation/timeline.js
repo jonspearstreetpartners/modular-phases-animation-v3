@@ -143,14 +143,14 @@ function buildProcessTitle(tl) {
     y: () => -(window.innerHeight / 2 - 30),
   }, 4.5);
 
-  // Fade out at the start of Stage 12 (Site Assembly) — the title is no
-  // longer thematically accurate once we leave the factory, and the user
-  // wants the small top-of-screen text gone for the rest of the animation.
+  // Fade out at the start of Stage 11 (Transport) — the title is no longer
+  // thematically accurate once we leave the factory, and the user wants
+  // the small top-of-screen text gone for the rest of the animation.
   tl.to('#process-title', {
     opacity: 0,
     duration: 0.7,
     ease: 'power2.in',
-  }, STAGE_TIMES.s12);
+  }, STAGE_TIMES.s11);
 }
 
 /**
