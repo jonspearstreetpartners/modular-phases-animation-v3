@@ -575,7 +575,8 @@ export function stageTransport(tl, refs, t0) {
 // to the rotated hook caused teleports and frame-mismatched roof unfolds.
 //
 //   1) 0.0 → 3.0  Trucks + modules drive BACK from -Z to z=0 (factory X)
-//   2) 2.5 → 3.5  Foundation appears at SITE_X (right of factory positions)
+//   2) 0.3 → 1.1  Foundation appears at SITE_X (early so it precedes the
+//                 "Permanent Foundation" callout fade-in at +0.5)
 //   3) 3.0 → 5.0  TRUCKS drive away to -Z (modules are now sitting alone)
 //   4) 5.0 → 7.0  Crane drives in from far -X
 //   5) 7.0 → 11.0 Crane lifts LOWER module → translates EAST to SITE_X →
@@ -626,13 +627,16 @@ export function stageSiteStacking(tl, refs, t0) {
     if (obj) tl.to(obj.position, { z: 0, duration: 3.0, ease: 'power2.out' }, t0);
   }
 
-  // ===== STEP 2 (2.5 → 3.3) — Foundation appears =====
+  // ===== STEP 2 (0.3 → 1.1) — Foundation appears =====
+  // Pulled forward (was t0 + 2.5) so the foundation is on screen BEFORE the
+  // "Permanent Foundation" callout fades in at t0 + 0.5 — otherwise the
+  // label arrives ahead of the thing it's pointing at.
   const foundation = refs.foundation;
   if (foundation) {
-    tl.set(foundation, { visible: true }, t0 + 2.5);
+    tl.set(foundation, { visible: true }, t0 + 0.3);
     foundation.children.forEach((c) => {
-      tl.set(c.scale, { y: 0.001 }, t0 + 2.5);
-      tl.to (c.scale, { y: 1, duration: 0.8, ease: 'power2.out' }, t0 + 2.5);
+      tl.set(c.scale, { y: 0.001 }, t0 + 0.3);
+      tl.to (c.scale, { y: 1, duration: 0.8, ease: 'power2.out' }, t0 + 0.3);
     });
   }
 
