@@ -592,7 +592,8 @@
         opacity: 0;
         pointer-events: none;
       }
-      #start-overlay-button {
+      #start-overlay-button,
+      #start-overlay-record {
         background: var(--spear-navy);
         color: #fff;
         border: none;
@@ -606,7 +607,17 @@
         box-shadow: 0 4px 18px rgba(26, 74, 122, 0.25);
         transition: transform 0.15s ease, box-shadow 0.15s ease;
       }
-      #start-overlay-button:hover {
+      #start-overlay-record {
+        background: #fff;
+        color: var(--spear-navy);
+        border: 2px solid var(--spear-navy);
+        padding: 14px 28px;            /* smaller than the primary Start */
+        font-size: 14px;
+        letter-spacing: 2.5px;
+        margin-top: 14px;
+      }
+      #start-overlay-button:hover,
+      #start-overlay-record:hover {
         transform: scale(1.03);
         box-shadow: 0 6px 22px rgba(26, 74, 122, 0.35);
       }
@@ -618,6 +629,7 @@
       }
       @media (max-width: 768px) {
         #start-overlay-button { padding: 18px 38px; font-size: 18px; letter-spacing: 3px; }
+        #start-overlay-record { padding: 12px 22px; font-size: 11px; letter-spacing: 2px; }
         #start-overlay-hint   { font-size: 11px; letter-spacing: 1px; padding: 0 16px; text-align: center; }
       }
     </style>
@@ -644,6 +656,7 @@
            Hidden after the first user click. -->
       <div id="start-overlay">
         <button id="start-overlay-button">Start</button>
+        <button id="start-overlay-record" type="button">Start &amp; Record</button>
         <div id="start-overlay-hint">CLICK TO START WITH SOUND</div>
       </div>
 

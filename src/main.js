@@ -13,6 +13,7 @@ import { buildGround } from './scene/ground.js';
 import { configureRenderer } from './scene/environment.js';
 import { setRaw, show as showStage } from './ui/stageLabel.js';
 import { updateCallouts } from './ui/callouts.js';
+import { startTabRecording } from './ui/recorder.js';
 
 import { MODULE_LOWER, MODULE_UPPER } from './utils/dimensions.js';
 import { buildModuleFloorFrame, buildModuleSubfloor } from './modules/floor.js';
@@ -785,19 +786,59 @@ function dismissStartOverlay() {
   setTimeout(() => startOverlay.remove(), 500);
 }
 
+// Shared "kick off the animation" routine — used by both the regular
+// Start button and the Start & Record button.
+function startAnimation() {
+  tl.pause(0);
+  if (soundtrack) {
+    try { soundtrack.currentTime = 0; } catch (_) {}
+  }
+  tl.play();
+  playAudio();
+  dismissStartOverlay();
+}
+
+const startOverlayButton = document.getElementById('start-overlay-button');
+const startOverlayRecord = document.getElementById('start-overlay-record');
+
 if (startOverlay) {
-  startOverlay.addEventListener('click', () => {
-    // First gesture — both browser autoplay policy is satisfied AND the
-    // user has expressed intent to start. Reset both clocks to t=0 (timeline
-    // is already paused at 0) and start them in lockstep.
-    tl.pause(0);
-    if (soundtrack) {
-      try { soundtrack.currentTime = 0; } catch (_) {}
-    }
-    tl.play();
-    playAudio();
-    dismissStartOverlay();
-  }, { once: true });
+  // Two BUTTONS in the overlay, each with its own behaviour. The outer
+  // overlay div is no longer the click target.
+  if (startOverlayButton) {
+    startOverlayButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      startAnimation();
+    }, { once: true });
+  }
+  if (startOverlayRecord) {
+    startOverlayRecord.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      // Disable both buttons immediately so a double-click doesn't
+      // start two recordings.
+      startOverlayRecord.disabled = true;
+      if (startOverlayButton) startOverlayButton.disabled = true;
+      startOverlayRecord.textContent = 'Choose tab + check "Share tab audio"';
+
+      // Ask the browser for tab capture FIRST. The user has to grant
+      // it before we start the timeline so the recording captures
+      // every frame from t=0.
+      const ctrl = await startTabRecording();
+      if (!ctrl) {
+        // User cancelled. Re-enable buttons and let them try again.
+        startOverlayRecord.disabled = false;
+        if (startOverlayButton) startOverlayButton.disabled = false;
+        startOverlayRecord.textContent = 'Start & Record';
+        return;
+      }
+
+      // Stop the recorder when the timeline finishes so the .webm
+      // download fires automatically without the user having to
+      // press "Stop sharing".
+      tl.eventCallback('onComplete', () => ctrl.stop());
+
+      startAnimation();
+    });
+  }
 } else {
   // Fallback: if the overlay element is missing for any reason, fall back
   // to the previous auto-play timer + first-gesture-unmute behavior.
