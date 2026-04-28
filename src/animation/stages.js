@@ -33,6 +33,113 @@ function findByPrefix(root, prefix) {
 }
 
 // ============================================================================
+// SECTION SW1 — Sewer / water site work (~6.6 sec)
+// ============================================================================
+// Plays at master time 5.9 → 12.5 (BEFORE the factory phases) — fits in the
+// new 'Site Work Construction' window between the intro title and the
+// Modular Construction Factory Process title.
+//
+// For each utility (sewer + water):
+//   t+0.0 → t+0.7     trench scales open (dig)
+//   t+0.7 → t+1.5     pipe slides in along its length (lay)
+//   t+1.7 → t+2.5     dirt cover scales up to bury the trench (fill)
+//
+// Sewer runs first (slightly larger pipe, leftmost trench), water follows
+// with a 0.5 s stagger so the eye reads them as two distinct trenches.
+export function stageSiteWork(tl, refs, t0) {
+  const sitework = refs.sitework;
+  if (!sitework) return;
+
+  // No announce() — the persistent #phase-label at the top already reads
+  // "Site Work Construction ~ 20-30 days" through both site-work sections.
+
+  tl.set(sitework, { visible: true }, t0);
+
+  const stagger = { sewer: 0.0, water: 0.5 };
+  for (const tag of ['sewer', 'water']) {
+    const off = stagger[tag];
+    const trench = findByName(sitework, `${tag}_trench`);
+    const pipe   = findByName(sitework, `${tag}_pipe`);
+    const cover  = findByName(sitework, `${tag}_cover`);
+
+    if (trench) {
+      tl.set(trench.scale, { y: 0.001 }, t0);
+      tl.to (trench.scale, { y: 1, duration: 0.7, ease: 'power2.out' }, t0 + off);
+    }
+    if (pipe) {
+      tl.set(pipe.scale, { x: 0.001 }, t0);
+      tl.to (pipe.scale, { x: 1, duration: 0.8, ease: 'power2.out' }, t0 + off + 0.7);
+    }
+    if (cover) {
+      tl.set(cover.scale, { y: 0.001 }, t0);
+      tl.to (cover.scale, { y: 1, duration: 0.8, ease: 'power2.out' }, t0 + off + 1.7);
+    }
+  }
+}
+
+// ============================================================================
+// SECTION SW2 — Foundation excavation + perimeter walls (~7.0 sec)
+// ============================================================================
+// Plays at master time 12.5 → 19.5. Builds the same crawl-space foundation
+// the modules later land on in Stage 12, but does it staged so the viewer
+// reads:
+//   t+0.0 → t+1.2   Inner dirt floor scales up (excavation read-out)
+//   t+1.2 → t+3.0   4 perimeter walls scale up one at a time
+//   t+3.0 → t+4.0   Interior bearing-wall footing scales up
+// Then the foundation is hidden again (~ t+5.5) so it doesn't sit visible
+// during the factory phases — it'll be re-shown without animation when
+// Stage 12 starts.
+export function stageFoundationConstruction(tl, refs, t0) {
+  const foundation = refs.foundation;
+  if (!foundation) return;
+
+  // No announce() — phase label covers it.
+
+  tl.set(foundation, { visible: true }, t0);
+
+  const dirtNorth = findByName(foundation, 'foundation_dirt_north');
+  const dirtSouth = findByName(foundation, 'foundation_dirt_south');
+  const wallN     = findByName(foundation, 'foundation_wall_north');
+  const wallS     = findByName(foundation, 'foundation_wall_south');
+  const wallE     = findByName(foundation, 'foundation_wall_east');
+  const wallW     = findByName(foundation, 'foundation_wall_west');
+  const footing   = findByName(foundation, 'foundation_bearing_footing');
+
+  // Initial: everything collapsed on its Y axis
+  for (const piece of [dirtNorth, dirtSouth, wallN, wallS, wallE, wallW, footing]) {
+    if (piece) tl.set(piece.scale, { y: 0.001 }, t0);
+  }
+
+  // 1) Excavation — dirt floor halves scale up (reads as ground levelled)
+  for (const dirt of [dirtNorth, dirtSouth]) {
+    if (dirt) tl.to(dirt.scale, { y: 1, duration: 1.2, ease: 'power2.out' }, t0 + 0.0);
+  }
+
+  // 2) Perimeter walls rise — west, east, north, south, staggered
+  const wallOrder = [wallW, wallE, wallN, wallS];
+  wallOrder.forEach((w, i) => {
+    if (w) tl.to(w.scale, { y: 1, duration: 0.6, ease: 'power2.out' }, t0 + 1.2 + i * 0.4);
+  });
+
+  // 3) Interior bearing-wall footing
+  if (footing) {
+    tl.to(footing.scale, { y: 1, duration: 0.8, ease: 'power2.out' }, t0 + 3.0);
+  }
+
+  // 4) Hide the foundation at the end of this section so it doesn't sit
+  //    visible during the factory phases. Stage 12 will re-show it
+  //    without animation (sw2 already animated the construction).
+  //    Aligned with the Site Work phase-label fade-out at master 19.5
+  //    (= SITEWORK_TIMES.sw_end). t0 = sw2 = 12.5, so 7.0 s in = 19.5.
+  tl.set(foundation, { visible: false }, t0 + 7.0);
+
+  // Also hide the sitework geometry — its job is done.
+  if (refs.sitework) {
+    tl.set(refs.sitework, { visible: false }, t0 + 7.0);
+  }
+}
+
+// ============================================================================
 // STAGE 1 — Floor system & module base (5.5 sec)
 // ============================================================================
 export function stageFloor(tl, refs, t0) {
@@ -629,16 +736,17 @@ export function stageSiteStacking(tl, refs, t0) {
     if (obj) tl.to(obj.position, { z: 0, duration: 3.0, ease: 'power2.out' }, t0);
   }
 
-  // ===== STEP 2 (0.3 → 1.1) — Foundation appears =====
-  // Pulled forward (was t0 + 2.5) so the foundation is on screen BEFORE the
-  // "Permanent Foundation" callout fades in at t0 + 0.5 — otherwise the
-  // label arrives ahead of the thing it's pointing at.
+  // ===== STEP 2 (0.3) — Foundation re-appears =====
+  // Foundation construction was animated in Section SW2 at the START of
+  // the timeline. We hid it after that so it didn't sit visible during the
+  // factory phases. Just re-show it here (no scale animation — it's been
+  // built already). Each child also needs scale.y = 1 in case GSAP's
+  // overwrite-auto reset state doesn't restore it cleanly across replays.
   const foundation = refs.foundation;
   if (foundation) {
     tl.set(foundation, { visible: true }, t0 + 0.3);
     foundation.children.forEach((c) => {
-      tl.set(c.scale, { y: 0.001 }, t0 + 0.3);
-      tl.to (c.scale, { y: 1, duration: 0.8, ease: 'power2.out' }, t0 + 0.3);
+      tl.set(c.scale, { y: 1 }, t0 + 0.3);
     });
   }
 

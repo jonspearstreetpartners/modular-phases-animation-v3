@@ -39,12 +39,17 @@ export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0,
   // to the camera each frame. Lookat target (centerX/centerY/centerZ) is part
   // of the proxy so it can be animated too — letting us pivot the gaze to the
   // SITE_X assembly location for the front-on close-in shot at the end.
+  //
+  // INITIAL centerX = 30 (= SITE_X): the new intro Sections SW1 (sewer/water
+  // trenches) and SW2 (foundation construction) play at the site location,
+  // so the camera needs to start framed there. A pre-factory tween (added
+  // below at relative -3.5 s) eases centerX back to 0 before Stage 1 begins.
   const proxy = {
     angle:       startAngle,        // radians, polar around (centerX, _, centerZ)
     distance:    startDistance,     // distance from the orbit center in XZ plane
     elevation:   camera.position.y, // world Y of the camera
     frustumSize: startFrustum,      // ortho frustum size
-    centerX:     0,                 // orbit center X (lookAt + polar pivot)
+    centerX:     30,                // orbit center X (lookAt + polar pivot)
     centerY:     6,                 // lookAt Y (height the camera aims at)
     centerZ:     0,                 // orbit center Z
   };
@@ -64,6 +69,11 @@ export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0,
     }
   };
 
+  // Snap the camera to its initial proxy state so the very first frame
+  // (during the Spear intro / first title) is framed at the site, not at
+  // the original origin lookAt baked into buildOrthoCamera.
+  applyProxy();
+
   // Helper: register a tween that mutates proxy + reapplies to camera each frame.
   // atTime values throughout this function are RELATIVE to construction-start
   // (Stage 1). startTime is added so the camera moves stay aligned when an
@@ -76,6 +86,12 @@ export function buildCameraAnimation(tl, camera, renderer = null, startTime = 0,
       onUpdate: applyProxy,
     }, startTime + atTime);
   };
+
+  // -3.0 – 0.0  PRE-FACTORY: pan from site (centerX=30) back to factory
+  //             (centerX=0). Plays during the Modular Construction Factory
+  //             Process title sequence (master ~19.5 → 22.5) so by the time
+  //             Stage 1 fires the camera is already framing the factory.
+  move({ centerX: 0 }, -3.0, 3.0, 'power2.inOut');
 
   // Choreography
   // 0.0 – 5.5: settle from wide to medium (zoom in)

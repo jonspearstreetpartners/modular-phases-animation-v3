@@ -28,6 +28,7 @@ import { buildFoundation } from './modules/foundation.js';
 import { buildCrane, updateCraneCables } from './modules/crane.js';
 import { buildPorch } from './modules/porch.js';
 import { buildLandscape } from './modules/landscape.js';
+import { buildSitework } from './modules/sitework.js';
 
 import { buildTimeline, STAGE_TIMES } from './animation/timeline.js';
 
@@ -144,6 +145,14 @@ landscape.position.set(SITE_X, 0, 0);
 landscape.visible = false;
 scene.add(landscape);
 
+// Site-work intro section — trenches + pipes co-located with the foundation
+// so the same camera frame works for both Sections SW1 (trenches) and
+// SW2 (foundation construction). Hidden until SW1 fires.
+const sitework = buildSitework();
+sitework.position.set(SITE_X, 0, 0);
+sitework.visible = false;
+scene.add(sitework);
+
 
 // ---------- Hide all stage geometry at startup ----------
 // In v3 we hide EVERYTHING (including FloorFrame) so the scene is empty
@@ -188,7 +197,7 @@ const refs = {
   moduleA: moduleLower, moduleB: moduleUpper,
   truckA:  truckLower,  truckB:  truckUpper,
   // v3 site stage assets
-  foundation, crane, porch, landscape,
+  foundation, crane, porch, landscape, sitework,
   siteX: SITE_X,
   lights,
   camera,

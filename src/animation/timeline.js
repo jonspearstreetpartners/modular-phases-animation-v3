@@ -24,12 +24,33 @@ import {
   stageFloor, stageFloorMEP, stageSubfloor, stageMEPStubs, stageWalls,
   stageMEPRoughIn, stageInsulationDrywall, stageRoof,
   stageExterior, stageInteriorComplete, stageTransport, stageSiteStacking,
+  stageSiteWork, stageFoundationConstruction,
 } from './stages.js';
 import { buildCameraAnimation } from './camera.js';
 
-// All construction stages shift right by INTRO_DURATION so the intro plays first.
-// Intro = Spear logo (0 → 2.5) + process title (2.5 → 6.0).
-export const INTRO_DURATION = 6.0;
+// MASTER TIMELINE LAYOUT
+//   0.0  → 2.5   Spear logo intro
+//   2.5  → 5.5   "Construction Process and Timeline for a Modular House"
+//                centered, fades in/out
+//   5.5  → 5.9   Site Work phase label fades in at top
+//   5.9  → 12.5  Section sw1 — sewer / water / drainage trenches (~6.6 s)
+//  12.5  → 19.5  Section sw2 — foundation excavation + walls   (~7.0 s)
+//  19.5  → 19.9  Site Work phase label fades out
+//  19.9  → 22.5  "Modular Construction Factory Process ~ 1-3 days"
+//                fades in centered, holds, travels to top
+//  22.5  → ...   Factory stages s1–s10 (existing choreography)
+//
+// All construction stages shift right by INTRO_DURATION = 22.5 (was 6.0)
+// to make room for the new front matter.
+export const INTRO_DURATION = 22.5;
+
+// Site-work section start times (inside the intro window — NOT offset by
+// INTRO_DURATION).
+export const SITEWORK_TIMES = {
+  sw1: 5.9,    // sewer / water trenches
+  sw2: 12.5,   // foundation excavation + walls
+  sw_end: 19.5,
+};
 
 export const STAGE_TIMES = {
   s1:  INTRO_DURATION + 0.0,
@@ -112,16 +133,52 @@ function buildIntro(tl) {
 }
 
 /**
- * Process title (2.5 → 6.0):
- *   - 2.5 → 3.0  Fade in centered, large
- *   - 3.0 → 4.5  Hold (read it)
- *   - 4.5 → 5.5  Shrink + travel up to top of viewport
- *   - Stays small at top for the rest of the animation
- *
- * Same transform-origin trick as #intro-logo: rest position is top:50%
- * left:50% with translate(-50%, -50%); GSAP animates xPercent/yPercent +
- * scale on top. Final y is computed from viewport size each frame.
+ * Intro title (2.5 → 5.5): "Construction Process and Timeline for a
+ * Modular House" — appears centered after the Spear logo settles, holds
+ * briefly so the viewer can read it, then fades out without travelling.
+ * Acts as the umbrella name for the whole animation.
  */
+function buildIntroTitle(tl) {
+  tl.set('#intro-title', { opacity: 0 }, 0);
+  tl.to('#intro-title', {
+    opacity: 1, duration: 0.5, ease: 'power2.out',
+  }, 2.5);
+  tl.to('#intro-title', {
+    opacity: 0, duration: 0.5, ease: 'power2.in',
+  }, 5.0);
+}
+
+/**
+ * Phase label (top-of-viewport persistent banner). Text content is set
+ * via tl.call so it can be swapped between phases:
+ *   - 5.5  → 19.9: "Site Work Construction ~ 20-30 days"
+ *   - 19.9 →    : (cleared — Process title takes over the umbrella spot)
+ */
+function buildPhaseLabel(tl) {
+  tl.set('#phase-label', { opacity: 0 }, 0);
+  tl.call(() => { document.getElementById('phase-label').textContent = 'Site Work Construction ~ 20-30 days'; }, null, 5.4);
+  tl.to('#phase-label', {
+    opacity: 1, duration: 0.4, ease: 'power2.out',
+  }, 5.5);
+
+  // Fade out at end of site-work sections
+  tl.to('#phase-label', {
+    opacity: 0, duration: 0.4, ease: 'power2.in',
+  }, SITEWORK_TIMES.sw_end);
+  tl.call(() => { document.getElementById('phase-label').textContent = ''; }, null, SITEWORK_TIMES.sw_end + 0.5);
+}
+
+/**
+ * Process title — used to be at 2.5 (right after Spear). Now appears
+ * AFTER the site-work sections (~ master time 19.9) as the lead-in to
+ * the factory phases:
+ *   - 19.9 → 20.4  Fade in centered, large
+ *   - 20.4 → 21.5  Hold (read it)
+ *   - 21.5 → 22.5  Shrink + travel up to top of viewport
+ *   - Stays small at top through factory stages
+ *   - Fades out at start of Stage 11 (Transport)
+ */
+const PROCESS_TITLE_START = 19.9;       // master-time fade-in time
 function buildProcessTitle(tl) {
   // GSAP owns the centering via xPercent/yPercent so the CSS
   // `transform: translate(-50%, -50%)` baseline is replaced by an explicit
@@ -141,22 +198,18 @@ function buildProcessTitle(tl) {
     opacity: 1,
     duration: 0.5,
     ease: 'power2.out',
-  }, 2.5);
+  }, PROCESS_TITLE_START);
 
-  // Hold (3.0 → 4.5)
+  // Hold
 
-  // Shrink + travel to top of viewport (4.5 → 5.5).
-  // Animate top: 50% -> 20px and yPercent: -50 -> 0, so the element's TOP
-  // edge ends at 20 px regardless of viewport size or text wrapping. This
-  // is more robust than computing a one-shot pixel translation, which
-  // becomes wrong if the mobile URL bar collapses mid-animation.
+  // Shrink + travel to top of viewport.
   tl.to('#process-title', {
     duration: 1.0,
     ease: 'power2.inOut',
     scale: 0.32,
     top: '20px',
     yPercent: 0,
-  }, 4.5);
+  }, PROCESS_TITLE_START + 1.6);
 
   // Fade out at the start of Stage 11 (Transport) — the title is no longer
   // thematically accurate once we leave the factory, and the user wants
@@ -295,7 +348,13 @@ export function buildTimeline(refs, { paused = true } = {}) {
 
   // Intro overlay (0 → INTRO_DURATION)
   buildIntro(tl);
+  buildIntroTitle(tl);
+  buildPhaseLabel(tl);
   buildProcessTitle(tl);
+
+  // Site-work sections (between intro and factory)
+  stageSiteWork(              tl, refs, SITEWORK_TIMES.sw1);
+  stageFoundationConstruction(tl, refs, SITEWORK_TIMES.sw2);
 
   // Transport title — fades in/out in the 3.5 s gap between s11 and s12.
   // Master-timeline start time = INTRO_DURATION + 53.0 (= end of transport).
